@@ -277,16 +277,18 @@ It is an async function and returns a promise
 - **app**: `[required]` Express application instance (e.g., const app = express();)
 - **keyCloakConfig:** `[required]`JSON object containing the Keycloak client configuration.  This can be obtained from the Keycloak admin console: Clients → [client name] → Installation → "Keycloak OIDC JSON" → Download
   Example:   
-  ```js       
-    {
-        "realm": "realm-name",
-        "auth-server-url": "https://keycloak.example.com/",
-        "ssl-required": "external",
-        "resource": "client-name",
-        "credentials": { "secret": "secret-code" },
-        "confidential-port": 0
-    }
-  ```
+```json
+         
+{
+    "realm": "realm-name",
+    "auth-server-url": "https://keycloak.example.com/",
+    "ssl-required": "external",
+    "resource": "client-name",
+    "credentials": { "secret": "secret-code" },
+    "confidential-port": 0
+}
+  
+```
 - **keyCloakOptions**: `[required]` advanced configuration options for the adapter. Main supported options:
   - **session:** Express session configuration (as in express-session)
   - **scope:** authentication scopes (e.g., 'openid profile email offline_access') **Note:** to use offline_access, the client must have the option enabled and the user must have the offline_access role.

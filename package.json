@@ -1,6 +1,6 @@
 {
   "name": "keycloak-express-middleware",
-  "version": "2.0.5",
+  "version": "3.0.5",
   "description": "Adapter API to integrate Node.js (Express) applications with Keycloak. Provides middleware for authentication, authorization, token validation, and route protection via OpenID Connect.",
   "main": "index.js",
   "scripts": {
@@ -47,10 +47,10 @@
   "devDependencies": {},
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aromanino/keycloak-express-middleware.git"
+    "url": "git+https://github.com/smartenv-crs4/keycloak-express-middleware.git"
   },
   "bugs": {
-    "url": "https://github.com/aromanino/keycloak-express-middleware/issues"
+    "url": "https://github.com/smartenv-crs4/keycloak-express-middleware/issues"
   },
-  "homepage": "https://github.com/aromanino/keycloak-express-middleware#readme"
+  "homepage": "https://github.com/smartenv-crs4/keycloak-express-middleware#readme"
 }
