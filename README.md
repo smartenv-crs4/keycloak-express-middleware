@@ -269,7 +269,7 @@ keycloackAdapter.configure(app,{
         }
     })
 ```
-keycloackAdapter.configure is a configuration function for the Keycloak 
+`keycloackAdapter.configure` is a configuration function for the Keycloak 
 adapter in an Express application. It must be called at app startup, before defining any protected routes.
 It is an async function and returns a promise
 
