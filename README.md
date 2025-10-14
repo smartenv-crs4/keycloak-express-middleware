@@ -298,7 +298,7 @@ It is an async function and returns a promise
 ---
 ## 🔧 Available Middlewares
 ### `underKeycloakProtection(callback) - deprecated - ` 
-**@deprecated Method**. Use the `configure` Method with **`await keycloakAdapter.configure({..})***`, then define your resources as you normally would in Express:
+**@deprecated Method**. Use the `configure` Method with **`await keycloakAdapter.configure({..})`**, then define your resources as you normally would in Express:
 ```js
     await keycloakAdapter.configure(config_Parameters);
     
