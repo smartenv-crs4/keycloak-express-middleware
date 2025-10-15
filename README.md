@@ -439,7 +439,9 @@ protected by flexible policies.
 
 **` -- @parameters -- `**
 - **conditions:** a check control string or function
-  - ***As a string:*** contain the name of the resource or permission to check
+  - ***As a string or array of strings:*** contain the name of the resource or permission to check. String Examples:
+    - ui-admin-resource: Apply the policies associated to the `ui-admin-resource` resource 
+    - ui-admin-resource:write: Apply the policies associateo to `ui-admin-resource`resource and `write` scope
   - ***as a function:*** custom check function with signature:
     ***`function(token, req, callback)`***
       - token: decoded Keycloak token
@@ -481,6 +483,10 @@ You must also configure in Keycloak:
 
 // Check with static string
 app.get('/onlyAdminroute', keycloakAdapter.enforcerMiddleware('ui-admin-resource'), (req, res) => {
+    res.send('You are an authorized admin for this resource');
+});
+
+app.get('/onlyAdminrouteByScope', keycloakAdapter.enforcerMiddleware('ui-admin-resource:write'), (req, res) => {
     res.send('You are an authorized admin for this resource');
 });
 
