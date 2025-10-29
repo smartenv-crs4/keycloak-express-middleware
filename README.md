@@ -14,6 +14,112 @@ it is based on **'keycloak-connect'**, and **'express-session'**
 - 👤 User info extraction from token
 - 🌍 CORS support and integration with frontend apps (SPA or mobile)
 ---
+## ⚠️ keycloak-express-middleware evolution by Version 4.0.0
+The new version of keycloak-express-middleware introduces a substantial evolution in its architecture. 
+It now embraces an object-oriented paradigm, which means each instance of the middleware is self-contained and independent. 
+Concretely, you can instantiate the library multiple times within the same application—each time pointing to a different client in Keycloak 
+and the instances will not share internal connections or state across modules. 
+This is a major shift from the previous version(until 3.0.9), where the library maintained a single shared 
+connection and did not support using distinct Keycloak clients simultaneously within the same 
+application scope.  By moving to this new ***one instance = one client*** model, you gain the flexibility to support scenarios such as:
+ - a single Express application acting as multiple Keycloak clients, each with different realms, client-ids or roles, 
+ - isolating middleware logic per client without risking cross-contamination of sessions or grants, 
+ - simplifying multitenancy or micro-service architectures where different parts of an app authenticate against different Keycloak clients. 
+ 
+**To summarize:** the new version enables multi-client usage within the same app by turning the middleware into configurable,
+independent object instances — something that the earlier version did not support.
+
+### 🏗️ Migration Guide: From Old to New Version
+
+🧩 Old Version (pre–object-oriented)
+```js
+// OLD VERSION UNTILL 3.0.9
+const express = require('express');
+const keycloackAdapter = require('keycloak-express-middleware');
+
+const app = express();
+await keycloackAdapter.configure(app,{
+        "realm": "Realm-Project",
+        "auth-server-url": "https://YourKeycloakUrl:30040/",
+        "ssl-required": "external",
+        "resource": "keycloackclientName",
+        "credentials": {
+            "secret": "aaaaaaaaaa"
+        },
+        "confidential-port": 0
+    },
+    {
+        session:{
+            secret: 'mySecretForSession',
+        }
+    });
+
+// Example of protection with keycloackAdapter.protectMiddleware middleware
+// whith a static client role validation string
+// Access is allowed only for authenticated admin users
+app.get('/privateStaticClientRole', keycloackAdapter.protectMiddleware("admin"), (req, res) => {
+    // "Your Custom Code"
+    res.send("Is its admin.");
+});
+```
+
+🆕 New Version (Object-Oriented Design) Up to 4.0.0
+
+```js
+// NEW VERSION UP TO 4.0.0
+const express = require('express');
+const { keycloackAdapter } = require('keycloak-express-middleware');
+
+const app = express();
+
+// Create independent Keycloak clients
+const keycloakA = new keycloackAdapter(app,{
+        "realm": "Realm-Project",
+        "auth-server-url": "https://YourKeycloakUrl:30040/",
+        "ssl-required": "external",
+        "resource": "keycloackclientName_A",
+        "credentials": {
+            "secret": "aaaaaaaaaa"
+        },
+        "confidential-port": 0
+    },
+    {
+        session:{
+            secret: 'mySecretForSession',
+        }
+    });
+
+const keycloakB = new keycloackAdapter(app,{
+        "realm": "Realm-Project",
+        "auth-server-url": "https://YourKeycloakUrl:30040/",
+        "ssl-required": "external",
+        "resource": "keycloackclientName_B",
+        "credentials": {
+            "secret": "aaaaaaaaaa"
+        },
+        "confidential-port": 0
+    },
+    {
+        session:{
+            secret: 'mySecretForSession',
+        }
+    });
+
+
+
+// Example protected routes
+app.get('/clientA/secure', keycloakA.protect(), (req, res) => {
+res.send('Protected route for Client A');
+});
+
+app.get('/clientB/secure', keycloakB.protect(), (req, res) => {
+res.send('Protected route for Client B');
+});
+
+app.listen(3000, () => console.log('Server running on port 3000'));
+```
+
+---
 ## 🚀 Installation
 ```bash
 npm install keycloak-express-middleware
@@ -42,11 +148,35 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 ## 📄 Usage Example
 ```js
 const express = require('express');
-const keycloackAdapter = require('keycloak-express-middleware');
+const keycloackAdapterClass = require('keycloak-express-middleware'); // import keycloackAdapter from 'keycloak-express-middleware';
+
+/*
+Old Style until version 3.0.9
+const keycloackAdapter = require('keycloak-express-middleware'); // import keycloackAdapter from 'keycloak-express-middleware';
+ */
 
 const app = express();
 
 
+// Configure and Initialize Keycloak adapter
+keycloackAdapter= new keycloackAdapterClass(app,{
+        "realm": "Realm-Project",
+        "auth-server-url": "https://YourKeycloakUrl:30040/",
+        "ssl-required": "external",
+        "resource": "keycloackclientName",
+        "credentials": {
+            "secret": "aaaaaaaaaa"
+        },
+        "confidential-port": 0
+    },
+    {
+        session:{
+            secret: 'mySecretForSession',
+        }
+    });
+
+/*
+OLD STYLE UNTIL VERSION 3.0.9
 // Configure and Initialize Keycloak adapter
 await keycloackAdapter.configure(app,{
         "realm": "Realm-Project",
@@ -63,6 +193,8 @@ await keycloackAdapter.configure(app,{
             secret: 'mySecretForSession',
         }
     });
+*/
+
 
 
 // -------------- Public route  -----------------------
@@ -275,7 +407,9 @@ It is an async function and returns a promise
 
 **` -- @parameters -- `**
 - **app**: `[required]` Express application instance (e.g., const app = express();)
-- **keyCloakConfig:** `[required]`JSON object containing the Keycloak client configuration.  This can be obtained from the Keycloak admin console: Clients → [client name] → Installation → "Keycloak OIDC JSON" → Download
+- **keyCloakConfig:** `[required]`JSON object containing the Keycloak client configuration.  This can be obtained from the Keycloak admin console: Clients → [client name] → Installation → "Keycloak OIDC JSON" → Download. It accepts other parameter not defined in downloaded config like:
+  - "verifyTokenAudience": If verify-token-audience = true, the adapter rejects the token if its audience does not match the client that receives it.
+  - "bearerOnly": for public client. if it is set to true the client cannot call login services
   Example:   
 ```json
          
