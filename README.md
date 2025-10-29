@@ -382,10 +382,10 @@ app.listen(PORT, () => {
 ## 🧩 Configuration
 In your Express application:
 ```js
-import keycloakAdapter from 'keycloak-express-middleware';
+import keycloakAdapterClass from 'keycloak-express-middleware';
 
 // Configure and Initialize Keycloak adapter
-keycloackAdapter.configure(app,{
+keycloackAdapter=new keycloakAdapterClass(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
@@ -401,12 +401,12 @@ keycloackAdapter.configure(app,{
         }
     })
 ```
-`keycloackAdapter.configure` is a configuration function for the Keycloak 
+`keycloak-express-middleware constructor` instantiate and configure the object for the Keycloak 
 adapter in an Express application. It must be called at app startup, before defining any protected routes.
 It is an async function and returns a promise
 
 **` -- @parameters -- `**
-- **app**: `[required]` Express application instance (e.g., const app = express();)
+- **app**: `[required]` Express application instance (e.g., const app = express();) or express router (e.g., var router = express.Router();)
 - **keyCloakConfig:** `[required]`JSON object containing the Keycloak client configuration.  This can be obtained from the Keycloak admin console: Clients → [client name] → Installation → "Keycloak OIDC JSON" → Download. It accepts other parameter not defined in downloaded config like:
   - "verifyTokenAudience": If verify-token-audience = true, the adapter rejects the token if its audience does not match the client that receives it.
   - "bearerOnly": for public client. if it is set to true the client cannot call login services
