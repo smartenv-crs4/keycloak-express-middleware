@@ -14,7 +14,7 @@ it is based on **'keycloak-connect'**, and **'express-session'**
 - 👤 User info extraction from token
 - 🌍 CORS support and integration with frontend apps (SPA or mobile)
 ---
-## ⚠️ keycloak-express-middleware evolution by Version 4.0.0
+## ⚠️ keycloak-express-middleware evolution starting from Version 4.0.0
 The new version of keycloak-express-middleware introduces a substantial evolution in its architecture. 
 It now embraces an object-oriented paradigm, which means each instance of the middleware is self-contained and independent. 
 Concretely, you can instantiate the library multiple times within the same application—each time pointing to a different client in Keycloak 
@@ -33,7 +33,7 @@ independent object instances — something that the earlier version did not supp
 
 🧩 Old Version (pre–object-oriented)
 ```js
-// OLD VERSION UNTILL 3.0.9
+// OLD VERSION UP TO 3.0.9
 const express = require('express');
 const keycloackAdapter = require('keycloak-express-middleware');
 
@@ -66,7 +66,7 @@ app.get('/privateStaticClientRole', keycloackAdapter.protectMiddleware("admin"),
 🆕 New Version (Object-Oriented Design) Up to 4.0.0
 
 ```js
-// NEW VERSION UP TO 4.0.0
+// NEW VERSION STARTING FROM 4.0.0
 const express = require('express');
 const { keycloackAdapter } = require('keycloak-express-middleware');
 
@@ -151,7 +151,7 @@ const express = require('express');
 const keycloackAdapterClass = require('keycloak-express-middleware'); // import keycloackAdapter from 'keycloak-express-middleware';
 
 /*
-Old Style until version 3.0.9
+Old Style up to version 3.0.9
 const keycloackAdapter = require('keycloak-express-middleware'); // import keycloackAdapter from 'keycloak-express-middleware';
  */
 
@@ -176,7 +176,7 @@ keycloackAdapter= new keycloackAdapterClass(app,{
     });
 
 /*
-OLD STYLE UNTIL VERSION 3.0.9
+OLD STYLE UP TO VERSION 3.0.9
 // Configure and Initialize Keycloak adapter
 await keycloackAdapter.configure(app,{
         "realm": "Realm-Project",

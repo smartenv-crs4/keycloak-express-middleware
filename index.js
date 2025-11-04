@@ -59,6 +59,8 @@ class keycloakExpressMiddleware {
         this.keycloak = null;
         this.ready=false;
         this.readyQueue=[];
+        this.realmName=keyCloackConfig.realm || keyCloackOptions.realmName;
+        this.authServerUrl=keyCloackConfig['auth-server-url'];
         if(keyCloackOptions){
             if (keyCloackOptions.session){
                 const memoryStore = new session.MemoryStore();
@@ -1248,7 +1250,17 @@ class keycloakExpressMiddleware {
         }else   res.redirect(redirectTo);
     }
 
+
+    redirectToUserAccountConsole(req,res){
+        let redirectUrL=`${this.authServerUrl}/realms/${this.realmName}/account/`
+        res.redirect(redirectUrL);
+    }
+
+
+
+
 }
+
 
 module.exports = keycloakExpressMiddleware;
 
