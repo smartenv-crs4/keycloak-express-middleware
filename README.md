@@ -486,7 +486,11 @@ Middleware to protect Express routes based on authentication and, optionally, au
 Allows restricting access to a resource only to authenticated users or to those possessing specific roles in the realm or in a Keycloak client.
 
 **` -- @parameters -- `**
-- **conditions**: `[optional]` An array of strings each specifying one or more required roles; or a function executing custom code performing an access role verification 
+- **conditions**: `[optional]` A String specifing one role, or an array of strings each specifying one or more required roles; or a function executing custom code performing an access role verification 
+  - As a string: specifies one required role, using the syntax:
+    - 'role'              → client role in the configured client (e.g., 'admin')
+    - 'clientid:role'     → client role of a specific client (e.g., 'myclient:editor')
+    - 'realm:role'        → realm role (e.g., 'realm:superuser')
   - As array of strings: specifies one or more required roles, using the syntax: 
     - 'role'              → client role in the configured client (e.g., 'admin')
     - 'clientid:role'     → client role of a specific client (e.g., 'myclient:editor')
@@ -494,6 +498,7 @@ Allows restricting access to a resource only to authenticated users or to those 
   - As a function: receives (token, req) and must return true or false synchronously. This function enables custom authorization logic. The `token` object passed to the authorization function exposes methods such as:
     - token.hasRole('admin')               // client role in configured client
     - token.hasRole('realm:superuser')     // realm role
+    - token.hasRealmRole('superuser)       // realm role like token.hasRole('realm:superuser')
     - token.hasRole('my-client:editor')    // client role of a specific client
     - token.hasResourceRole('editor', 'my-client-id') // equivalent to hasRole('my-client:editor')
     The authorization function must be synchronous and return true (allow access) or false (deny access).
@@ -715,6 +720,7 @@ for example showing different content based on role.
 Represents the decoded Keycloak token and exposes several useful methods such as:
 - token.hasRole('admin')             // true/false if it has client role "admin"
 - token.hasRole('realm:superuser')   // true/false if it has realm role "superuser"
+- token.hasRealmRole('superuser)     // realm role like token.hasRole('realm:superuser')
 - token.hasRole('my-client:editor')  // true/false if it has client role "editor" for client "my-client"
 - token.hasResourceRole('editor', 'my-client-id') // identical to hasRole('my-client:editor')
 
