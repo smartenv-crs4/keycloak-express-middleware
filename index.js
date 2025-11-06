@@ -323,7 +323,12 @@ class keycloakExpressMiddleware {
      */
 
     protectMiddleware(conditions){
-        return(this.keycloak.protect(conditions));
+        //return(this.keycloak.protect(conditions));
+        conditions = Array.isArray(conditions) ? conditions : [conditions];
+        return this.keycloak.protect((token) => {
+            return conditions.some((role) => token.hasRole(role));
+        });
+
     }
 
 
