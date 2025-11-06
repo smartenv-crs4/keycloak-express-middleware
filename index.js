@@ -322,18 +322,33 @@ class keycloakExpressMiddleware {
      * or false (deny access).
      */
 
-    protectMiddleware(conditions){
-        //return(this.keycloak.protect(conditions));
-
-        const self = this;
-        return function(req, res, next){
-            conditions = Array.isArray(conditions) ? conditions : [conditions];
-            self.keycloak.protect((token) => {
-                return conditions.some((role) => typeof role === 'string' && token.hasRole(role));
-            })(req, res, next);
+    // protectMiddleware(conditions){
+    //     //return(this.keycloak.protect(conditions));
+    //
+    //     const self = this;
+    //     return function(req, res, next){
+    //         conditions = Array.isArray(conditions) ? conditions : [conditions];
+    //         self.keycloak.protect((token) => {
+    //             return conditions.some((role) => typeof role === 'string' && token.hasRole(role));
+    //         })(req, res, next);
+    //     }
+    // }
+    protectMiddleware(conditions) {
+        // Se conditions è una funzione, delega direttamente a keycloak.protect()
+        if (typeof conditions === 'function') {
+            return this.keycloak.protect(conditions);
         }
-    }
 
+        // Altrimenti, gestisci ruoli singoli o multipli
+        return (req, res, next) => {
+            const roles = Array.isArray(conditions) ? conditions : [conditions];
+            this.keycloak.protect((token) => {
+                return roles.some(
+                    (role) => typeof role === 'string' && token.hasRole(role)
+                );
+            })(req, res, next);
+        };
+    }
 
     /**
      * *************************** - ITALIANO - *****************************
