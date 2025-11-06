@@ -328,7 +328,7 @@ class keycloakExpressMiddleware {
         const self = this;
         return function(req, res, next){
             conditions = Array.isArray(conditions) ? conditions : [conditions];
-            return self.keycloak.protect((token) => {
+            self.keycloak.protect((token) => {
                 return conditions.some((role) => typeof role === 'string' && token.hasRole(role));
             })(req, res, next);
         }
