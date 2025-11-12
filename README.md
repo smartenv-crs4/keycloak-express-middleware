@@ -1005,15 +1005,13 @@ app.get('/logout', (req, res) => {
 
 ---
 
-### `redirectToUserAccountConsole(req, res)`
+### `redirectToUserAccountConsole(res)`
 `redirectToUserAccountConsole` Function is not a middleware, but a **classic synchronous function** that redirect
 the users to keycloak Admin console where they can view and manage their personal profile and account settings.
 
-
 **` -- @parameters -- `**
-- **req:** `[required]` Express `Request` object
 - **res:** `[required]` Express `Response` object
-- **redirectTo:** `[required]` URL to redirect the user to after successful logout
+
 
 
 --- Design suggestions ---
@@ -1024,17 +1022,26 @@ This way, the app page remains open, and the user can easily return to it after 
 Example:
 Suppose that https://auth.example.com/user/account is the endpoint used by the redirectToUserAccountConsole function
 here’s a possible example:
+✅ Usage example:
 ```html
-<a href="https://auth.example.com/user/account" target="_blank">
+<a href="https://auth.example.com/user/account/console" target="_blank">
   Manage my profile
 </a>
 ```
 
+```js
+
+app.get('/user/account/console', (req, res) => {
+    // Any custom logic before logout
+    keycloakAdapter.redirectToUserAccountConsole(res);
+});
+
+```
 
 The user opens the account console in a new tab, uses it, and then manually returns to your app.
 ✅ Simple, no special configuration required.
 
-```
+---
 
 --- Requirements ---
 - The user must be authenticated with Keycloak and have a valid token in `req.kauth.grant`.

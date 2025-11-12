@@ -1274,7 +1274,7 @@ class keycloakExpressMiddleware {
     }
 
 
-    redirectToUserAccountConsole(req,res){
+    redirectToUserAccountConsole(res){
         let redirectUrL=`${this.authServerUrl}/realms/${this.realmName}/account/`
         res.redirect(redirectUrL);
     }
