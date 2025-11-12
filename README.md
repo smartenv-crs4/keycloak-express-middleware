@@ -379,6 +379,93 @@ app.listen(PORT, () => {
 });
 ```
 ---
+
+## Handling Unauthorized Access (401/403) Gracefully
+
+When a user tries to access a protected resource without the proper roles, the `keycloak-express-middleware` may respond with a plain `401` or `403` message containing `access_denied`.  
+While technically correct, this behavior results in a **blank browser page** showing only that message.
+To improve user experience, you can easily intercept these responses and display a custom HTML page or redirect users 
+elsewhere using the [`responseinterceptor`](https://www.npmjs.com/package/responseinterceptor) middleware.
+This allows developers to present a more user-friendly "Access Denied" page or redirect unauthorized users to 
+a login or error page.
+
+> 🛈 Note: In a secure application, users should normally not reach protected routes without authentication.  
+> However, for simplicity or flexibility during development, this interception approach can be convenient.
+
+### Example 1 — Custom Access Denied Page
+
+```js
+import responseinterceptor from 'responseinterceptor';
+import keycloakMiddleware from 'keycloak-express-middleware';
+
+function tmpInterceptor(req, respond) {
+  respond(200, '<h1>Access Denied</h1><p>You are not authorized to view this page.</p>');
+}
+
+app.get(
+  '/test403',
+  responseinterceptor.interceptByStatusCode(403, tmpInterceptor),
+  keycloakMiddleware.protectMiddleware('role'),
+  (req, res) => {
+    res.render('welcome');
+  }
+);
+```
+
+### Example 2 — Redirect to a Dedicated Page (Dynamic Redirect)
+
+```js
+function tmpInterceptorDinamic(req, respond) {
+  //your log 
+  switch (req.path) {
+      case '/':
+          respond('/access-denied');        
+          break
+      case '/help':
+          respond('/access-denied-help');
+          break
+      default:
+          respond('/access-denied-default');
+  }
+}
+
+app.get('/access-denied', (req, res) => {
+  res.render('access-denied');
+});
+
+app.get(
+  '/test403redirectDynamic',
+  responseinterceptor.interceptByStatusCodeRedirectTo(403, tmpInterceptorDinamic),
+  keycloakMiddleware.protectMiddleware('none'),
+  (req, res) => {
+      res.render('welcome');
+  }
+);
+```
+
+### Example 3 — Static Redirect to a Route
+
+```js
+app.get(
+  '/test403redirectStatic',
+  responseinterceptor.interceptByStatusCodeRedirectTo(403, '/access-denied'),
+  keycloakMiddleware.protectMiddleware('none'),
+  (req, res) => {
+      res.render('welcome');
+  }
+);
+```
+
+### Summary
+
+| Scenario | Middleware Used | Action |
+|-----------|------------------|---------|
+| Replace response content | `interceptByStatusCode()` | Renders a custom message or template |
+| Redirect dynamically | `interceptByStatusCodeRedirectTo()` + callback | Redirects to a route computed in code |
+| Redirect statically | `interceptByStatusCodeRedirectTo()` + string | Redirects to a predefined route |
+
+
+---
 ## 🧩 Configuration
 In your Express application:
 ```js
@@ -946,16 +1033,6 @@ here’s a possible example:
 
 The user opens the account console in a new tab, uses it, and then manually returns to your app.
 ✅ Simple, no special configuration required.
-
-
-✅ Usage example:
-```js
-
-app.get('/logout', (req, res) => {
-    // Any custom logic before logout
-    // ...
-    keycloakAdapter.logout(req, res, "http://localhost:3001/home");
-});
 
 ```
 
