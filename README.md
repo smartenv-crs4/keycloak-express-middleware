@@ -398,10 +398,14 @@ a login or error page.
 import responseinterceptor from 'responseinterceptor';
 import keycloakMiddleware from 'keycloak-express-middleware';
 
+
 function tmpInterceptor(req, respond) {
+    // Handling Unauthorized Access (401/403) Gracefully
   respond(200, '<h1>Access Denied</h1><p>You are not authorized to view this page.</p>');
 }
 
+// if protectMiddleware('role') return a 403 with keycloak blank page then 
+// interceptByStatusCode Handle Unauthorized Access (401/403) Gracefully
 app.get(
   '/test403',
   responseinterceptor.interceptByStatusCode(403, tmpInterceptor),
@@ -433,6 +437,17 @@ app.get('/access-denied', (req, res) => {
   res.render('access-denied');
 });
 
+app.get('/access-denied', (req, res) => {
+    res.render('access-denied-help');
+});
+
+app.get('/access-denied', (req, res) => {
+    res.render('access-denied-default');
+});
+
+// if protectMiddleware('role') return a 403 with keycloak blank page then 
+// interceptByStatusCode Handle Unauthorized Access (401/403) Gracefully
+// by user redirection with tmpInterceptorDinamic logic
 app.get(
   '/test403redirectDynamic',
   responseinterceptor.interceptByStatusCodeRedirectTo(403, tmpInterceptorDinamic),
@@ -446,6 +461,9 @@ app.get(
 ### Example 3 — Static Redirect to a Route
 
 ```js
+// if protectMiddleware('role') return a 403 with keycloak blank page then 
+// interceptByStatusCode Handle Unauthorized Access (401/403) Gracefully
+// by user redirection
 app.get(
   '/test403redirectStatic',
   responseinterceptor.interceptByStatusCodeRedirectTo(403, '/access-denied'),
@@ -466,6 +484,8 @@ app.get(
 
 
 ---
+
+
 ## 🧩 Configuration
 In your Express application:
 ```js
