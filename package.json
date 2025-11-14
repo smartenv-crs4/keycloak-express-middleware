@@ -1,6 +1,6 @@
 {
   "name": "keycloak-express-middleware",
-  "version": "6.0.1",
+  "version": "6.0.2",
   "description": "Adapter API to integrate Node.js (Express) applications with Keycloak. Provides middleware for authentication, authorization, token validation, and route protection via OpenID Connect.",
   "main": "index.js",
   "scripts": {
