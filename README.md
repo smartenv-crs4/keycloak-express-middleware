@@ -108,12 +108,12 @@ const keycloakB = new keycloackAdapter(app,{
 
 
 // Example protected routes
-app.get('/clientA/secure', keycloakA.protect(), (req, res) => {
-res.send('Protected route for Client A');
+app.get('/clientA/secure', keycloakA.protectMiddleware(), (req, res) => {
+    res.send('Protected route for Client A');
 });
 
-app.get('/clientB/secure', keycloakB.protect(), (req, res) => {
-res.send('Protected route for Client B');
+app.get('/clientB/secure', keycloakB.protectMiddleware(), (req, res) => {
+    res.send('Protected route for Client B');
 });
 
 app.listen(3000, () => console.log('Server running on port 3000'));
