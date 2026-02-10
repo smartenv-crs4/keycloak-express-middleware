@@ -249,6 +249,46 @@ class keycloakExpressMiddleware {
      *     res.send('Accesso consentito dalla funzione di controllo personalizzata.');
      * });
      *
+     * --- Accesso ai dati del token nella route handler ---
+     *
+     * Dopo l'autenticazione riuscita, il token e le sue informazioni sono disponibili in:
+     * - `req.kauth.grant.access_token.content` - contenuto del token decodificato
+     *   - `req.kauth.grant.access_token.content.scope` - gli scope concessi (es. 'openid profile email')
+     *   - `req.kauth.grant.access_token.content.preferred_username` - username dell'utente
+     *   - `req.kauth.grant.access_token.content.email` - email dell'utente
+     *   - `req.kauth.grant.access_token.content.name` - nome completo dell'utente
+     *   - `req.kauth.grant.access_token.content.resource_access` - ruoli per client specifici
+     *   - `req.kauth.grant.access_token.content.realm_access` - ruoli di realm
+     *   - Qualsiasi altro claim personalizzato del token
+     *
+     * ⭐ Esempio: Risorsa admin con verifica dello scope nella route handler
+     * Protegge la route richiedendo il ruolo 'admin'.
+     * Nella handler, verifica che l'utente abbia anche lo scope 'email':
+     *
+     * app.get('/admin/users', keycloakAdapter.protectMiddleware('admin'), (req, res) => {
+     *     // Accedi ai dati del token autenticato
+     *     const tokenContent = req.kauth.grant.access_token.content;
+     *     const userScopes = tokenContent.scope || ''; // es. 'openid profile email'
+     *     const username = tokenContent.preferred_username;
+     *     const userEmail = tokenContent.email;
+     *
+     *     // Verifica personalizzata dello scope nella handler
+     *     if (!userScopes.includes('email')) {
+     *         return res.status(403).json({
+     *             error: 'Forbidden',
+     *             message: 'L\'utente non ha lo scope email richiesto per questa operazione.'
+     *         });
+     *     }
+     *
+     *     // Se tutte le verifiche passano, procedi
+     *     res.json({
+     *         message: 'Benvenuto admin!',
+     *         username: username,
+     *         email: userEmail,
+     *         scopes: userScopes.split(' ')
+     *     });
+     * });
+     *
      * --- Dettagli sul token e metodi utili ---
      *
      * L'oggetto `token` passato alla funzione di controllo espone metodi come:
@@ -308,6 +348,46 @@ class keycloakExpressMiddleware {
      *     return token.hasRealmRole('editor') && req.headers['x-custom-header'] === 'OK';
      * }), (req, res) => {
      *     res.send('Access granted by custom authorization function.');
+     * });
+     *
+     * --- Accessing token data in the route handler ---
+     *
+     * After successful authentication, the token and its information are available at:
+     * - `req.kauth.grant.access_token.content` - decoded token content
+     *   - `req.kauth.grant.access_token.content.scope` - granted scopes (e.g., 'openid profile email')
+     *   - `req.kauth.grant.access_token.content.preferred_username` - user's username
+     *   - `req.kauth.grant.access_token.content.email` - user's email
+     *   - `req.kauth.grant.access_token.content.name` - user's full name
+     *   - `req.kauth.grant.access_token.content.resource_access` - roles per specific client
+     *   - `req.kauth.grant.access_token.content.realm_access` - realm roles
+     *   - Any other custom token claims
+     *
+     * ⭐ Example: Admin resource with scope verification in route handler
+     * Protects the route requiring 'admin' role.
+     * In the handler, verifies that the user also has the 'email' scope:
+     *
+     * app.get('/admin/users', keycloakAdapter.protectMiddleware('admin'), (req, res) => {
+     *     // Access authenticated token data
+     *     const tokenContent = req.kauth.grant.access_token.content;
+     *     const userScopes = tokenContent.scope || ''; // e.g., 'openid profile email'
+     *     const username = tokenContent.preferred_username;
+     *     const userEmail = tokenContent.email;
+     *
+     *     // Custom scope verification in the handler
+     *     if (!userScopes.includes('email')) {
+     *         return res.status(403).json({
+     *             error: 'Forbidden',
+     *             message: 'The user does not have the email scope required for this operation.'
+     *         });
+     *     }
+     *
+     *     // If all checks pass, proceed
+     *     res.json({
+     *         message: 'Welcome admin!',
+     *         username: username,
+     *         email: userEmail,
+     *         scopes: userScopes.split(' ')
+     *     });
      * });
      *
      * --- Token details and useful methods ---
