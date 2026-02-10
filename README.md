@@ -15,7 +15,7 @@ it is based on **'keycloak-connect'**, and **'express-session'**
 - 🌍 CORS support and integration with frontend apps (SPA or mobile)
 ---
 ## ⚠️ keycloak-express-middleware evolution starting from Version 4.0.0
-The new version of keycloak-express-middleware introduces a substantial evolution in its architecture. 
+The new version of keycloak-express-middleware (currently at version 6.0.2) introduces a substantial evolution in its architecture. 
 It now embraces an object-oriented paradigm, which means each instance of the middleware is self-contained and independent. 
 Concretely, you can instantiate the library multiple times within the same application—each time pointing to a different client in Keycloak 
 and the instances will not share internal connections or state across modules. 
@@ -26,7 +26,7 @@ application scope.  By moving to this new ***one instance = one client*** model,
  - isolating middleware logic per client without risking cross-contamination of sessions or grants, 
  - simplifying multitenancy or micro-service architectures where different parts of an app authenticate against different Keycloak clients. 
  
-**To summarize:** the new version enables multi-client usage within the same app by turning the middleware into configurable,
+**To summarize:** the new version (4.0.0+, currently 6.0.2) enables multi-client usage within the same app by turning the middleware into configurable,
 independent object instances — something that the earlier version did not support.
 
 ### 🏗️ Migration Guide: From Old to New Version
@@ -63,10 +63,10 @@ app.get('/privateStaticClientRole', keycloackAdapter.protectMiddleware("admin"),
 });
 ```
 
-🆕 New Version (Object-Oriented Design) Up to 4.0.0
+🆕 New Version (Object-Oriented Design) - Version 4.0.0+
 
 ```js
-// NEW VERSION STARTING FROM 4.0.0
+// NEW VERSION STARTING FROM 4.0.0 (currently 6.0.2)
 const express = require('express');
 const { keycloackAdapter } = require('keycloak-express-middleware');
 
@@ -148,18 +148,20 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 ## 📄 Usage Example
 ```js
 const express = require('express');
-const keycloackAdapterClass = require('keycloak-express-middleware'); // import keycloackAdapter from 'keycloak-express-middleware';
+// CommonJS - Default import
+const keycloackAdapter = require('keycloak-express-middleware');
 
-/*
-Old Style up to version 3.0.9
-const keycloackAdapter = require('keycloak-express-middleware'); // import keycloackAdapter from 'keycloak-express-middleware';
- */
+// ES6 - Named import (recommended for clarity)
+// import { keycloackAdapter } from 'keycloak-express-middleware';
+
+// ES6 - Default import
+// import keycloackAdapter from 'keycloak-express-middleware';
 
 const app = express();
 
 
 // Configure and Initialize Keycloak adapter
-keycloackAdapter= new keycloackAdapterClass(app,{
+const keycloakInstance = new keycloackAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
@@ -205,79 +207,79 @@ app.get('/', (req, res) => {
 
 /* ############## Protected routes (any authenticated user) ###########  */
 
-// Example of login with keycloackAdapter.login function
+// Example of login with keycloakInstance.login function
 // After login redirect to "/home" 
 app.get('/signIn', (req, res) => {
     console.log("Your Custom Code");
-    keycloackAdapter.login(req,res,"/home")
+    keycloakInstance.login(req,res,"/home")
 
 });
 
-// Example of login with keycloackAdapter.loginMiddleware middleware
+// Example of login with keycloakInstance.loginMiddleware middleware
 // After login redirect to "/home" 
-app.get('/loginMiddleware', keycloackAdapter.loginMiddleware("/home") ,(req, res) => {
+app.get('/loginMiddleware', keycloakInstance.loginMiddleware("/home") ,(req, res) => {
     // Response handled by middleware, this section will never be reached.
 });
 
-// Example of logout with keycloackAdapter.logout function
+// Example of logout with keycloakInstance.logout function
 // After login redirect to "http://localhost:3001/home" 
 app.get('/logout', (req, res) => {
     console.log("Your Custom Code");
-    keycloackAdapter.logout(req,res,"http://localhost:3001/home");
+    keycloakInstance.logout(req,res,"http://localhost:3001/home");
 });
 
-// Example of logout with keycloackAdapter.logoutMiddleware middleware
+// Example of logout with keycloakInstance.logoutMiddleware middleware
 // After login redirect to "http://localhost:3001/home"
-app.get('/logoutMiddle', keycloackAdapter.logoutMiddleware("http://redirctUrl"), (req, res) => {
+app.get('/logoutMiddle', keycloakInstance.logoutMiddleware("http://redirctUrl"), (req, res) => {
     // Response handled by middleware, this section will never be reached.
 });
 
 
-// Example of protection with keycloackAdapter.protectMiddleware middleware
+// Example of protection with keycloakInstance.protectMiddleware middleware
 // Access is allowed only for authenticated users
-app.get('/private', keycloackAdapter.protectMiddleware(), (req, res) => {
+app.get('/private', keycloakInstance.protectMiddleware(), (req, res) => {
     console.log("Your Custom Code");
     console.log( req.session);
     res.redirect('/auth');
 });
 
-// Example of protection with keycloackAdapter.protectMiddleware middleware
+// Example of protection with keycloakInstance.protectMiddleware middleware
 // whith a static client role validation string
 // Access is allowed only for authenticated admin users
-app.get('/privateStaticClientRole', keycloackAdapter.protectMiddleware("admin"), (req, res) => {
+app.get('/privateStaticClientRole', keycloakInstance.protectMiddleware("admin"), (req, res) => {
     // "Your Custom Code"
     res.send("Is its admin.");
 });
 
-// Example of protection with keycloackAdapter.protectMiddleware middleware
+// Example of protection with keycloakInstance.protectMiddleware middleware
 // whith a static realm role validation string
 // Access is allowed only for authenticated realm admin users
-app.get('/privateStaticRealmRole', keycloackAdapter.protectMiddleware("realm:admin"), (req, res) => {
+app.get('/privateStaticRealmRole', keycloakInstance.protectMiddleware("realm:admin"), (req, res) => {
     // "Your Custom Code"
     res.send("Is its admin realm:admin.");
 });
 
-// Example of protection with keycloackAdapter.protectMiddleware middleware
+// Example of protection with keycloakInstance.protectMiddleware middleware
 // whith a static other client role validation string
 // Access is allowed only for authenticated otherClient admin users
-app.get('/privateStaticRealmRole', keycloackAdapter.protectMiddleware("otherClient:admin"), (req, res) => {
+app.get('/privateStaticRealmRole', keycloakInstance.protectMiddleware("otherClient:admin"), (req, res) => {
     // "Your Custom Code"
     res.send("Is its admin otherClient:admin.");
 });
 
-// Example of protection with keycloackAdapter.protectMiddleware middleware
+// Example of protection with keycloakInstance.protectMiddleware middleware
 // whith a control function tmpFunction
 // Access is allowed only for authenticated admin users
 let tmpFunction=function (token, req) {
     return token.hasRole('admin');
 }
-app.get('/isAdmin', keycloackAdapter.protectMiddleware(tmpFunction), (req, res) => {
+app.get('/isAdmin', keycloakInstance.protectMiddleware(tmpFunction), (req, res) => {
     // "Your Custom Code"
     res.send("Is its admin tmpFunction.");
 });
 
 
-// Example of protection with keycloackAdapter.customProtectMiddleware middleware
+// Example of protection with keycloakInstance.customProtectMiddleware middleware
 // whith a control function tmpFunctionString
 // Access is allowed only for authenticated users with role defined by tmpFunctionString
 let tmpFunctionString=function (req,res) {
@@ -285,16 +287,16 @@ let tmpFunctionString=function (req,res) {
     // Control String by url param Id 
     return (`${id}`);
 }
-app.get('/:id/isAdmin', keycloackAdapter.customProtectMiddleware(tmpFunctionString), (req, res) => {
+app.get('/:id/isAdmin', keycloakInstance.customProtectMiddleware(tmpFunctionString), (req, res) => {
     // "Your Custom Code"
     res.send("Is its admin tmpFunctionString.");
 });
 
 
-// Example of protection with keycloackAdapter.encodeTokenRole middleware
+// Example of protection with keycloakInstance.encodeTokenRole middleware
 // Encode the token and add it to req.encodedTokenRole
 // Use req.encodedTokenRole.hasRole("role") to check whether the token has that role or not
-app.get('/encodeToken', keycloackAdapter.encodeTokenRole(), (req, res) => {
+app.get('/encodeToken', keycloakInstance.encodeTokenRole(), (req, res) => {
     if(req.encodedTokenRole.hasRole('realm:admin'))
         res.send("Is its a realm admin");
     else
@@ -309,17 +311,17 @@ app.get('/encodeToken', keycloackAdapter.encodeTokenRole(), (req, res) => {
 // #####################################################################################
 
 
-// Example of protection with keycloackAdapter.enforcerMiddleware middleware
+// Example of protection with keycloakInstance.enforcerMiddleware middleware
 // whith a static control string
 // Access is allowed only for users with 'ui-admin-resource' permission defined 
 // in keycloak
-app.get('/adminResource', keycloackAdapter.enforcerMiddleware('ui-admin-resource'), (req, res) => {
+app.get('/adminResource', keycloakInstance.enforcerMiddleware('ui-admin-resource'), (req, res) => {
     // If this section is reached, the user has the required privileges; 
     // otherwise, the middleware responds with a 403 Access Denied.
     res.send('You are an authorized ui-admin-resource User');
 });
 
-// Example of protection with keycloackAdapter.enforcerMiddleware middleware
+// Example of protection with keycloakInstance.enforcerMiddleware middleware
 // whith a control function tmpFunctionEnforceValidation
 // Access is allowed only for users with 'ui-admin-resource' or
 // ui-viewer-resource permission defined in keycloak
@@ -335,7 +337,7 @@ let tmpFunctionEnforceValidation=function (token,req,callback) {
         }));
     }));
 }
-app.get('/adminOrViewerResorce', keycloackAdapter.enforcerMiddleware(tmpFunctionEnforceValidation), (req, res) => {
+app.get('/adminOrViewerResorce', keycloakInstance.enforcerMiddleware(tmpFunctionEnforceValidation), (req, res) => {
     // If this section is reached, the user has the required privileges 
     // driven by tmpFunctionEnforceValidation; otherwise, the middleware responds
     // with a 403 Access Denied.
@@ -343,7 +345,7 @@ app.get('/adminOrViewerResorce', keycloackAdapter.enforcerMiddleware(tmpFunction
 });
 
 
-// Example of protection with keycloackAdapter.customEnforcerMiddleware middleware
+// Example of protection with keycloakInstance.customEnforcerMiddleware middleware
 // whith a control function tmpFunctionEnforce that define the control string
 // Access is allowed only for users with a url params ':permission' permission defined 
 // in keycloak
@@ -351,19 +353,19 @@ let tmpFunctionEnforce=function (req,res) {
     // Permission that depends on a URL parameter.
     return(req.params.permission);
 }
-app.get('/urlParameterPermission/:permission', keycloackAdapter.customEnforcerMiddleware(tmpFunctionEnforce), (req, res) => {
+app.get('/urlParameterPermission/:permission', keycloakInstance.customEnforcerMiddleware(tmpFunctionEnforce), (req, res) => {
     res.send(`You are an authorized User with ${req.params.permission} permission`);
 });
 
-// Example of protection with keycloackAdapter.encodeTokenPermission middleware
-// Encode the token permission and add it to req.encodedTokenPremission
-// Use req.encodedTokenPremission.hasPermission("permission") to check whether
+// Example of protection with keycloakInstance.encodeTokenPermission middleware
+// Encode the token permission and add it to req.encodedTokenPermission
+// Use req.encodedTokenPermission.hasPermission("permission") to check whether
 // the token has that permission or not
-app.get('/encodeTokenPermission', keycloackAdapter.encodeTokenPermission(), (req, res) => {
+app.get('/encodeTokenPermission', keycloakInstance.encodeTokenPermission(), (req, res) => {
     // Check permission using token.hasPermission, which performs the verification
     // and responds with a callback that returns true if the permission is valid, 
     // and false otherwise.
-    req.encodedTokenPremission.hasPermission('ui-admin-resource', function(permission){
+    req.encodedTokenPermission.hasPermission('ui-admin-resource', function(permission){
         if(permission)
             res.send('You are an authorized User by ui-admin-resource permission');
         else res.status(403).send("access Denied");
@@ -555,10 +557,10 @@ app.get(
 ## 🧩 Configuration
 In your Express application:
 ```js
-import keycloakAdapterClass from 'keycloak-express-middleware';
+const keycloackAdapter = require('keycloak-express-middleware');
 
 // Configure and Initialize Keycloak adapter
-keycloackAdapter=new keycloakAdapterClass(app,{
+const keycloakInstance = new keycloackAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",

@@ -838,7 +838,7 @@ class keycloakExpressMiddleware {
      * --- Aggiunte a `req` ---
      * Dopo l'applicazione del middleware, `req` contiene:
      *
-     * @property {Object} req.encodedTokenPremission
+     * @property {Object} req.encodedTokenPermission
      *     Un oggetto che espone il metodo:
      *
      *     - `hasPermission(permission: string, callback: function(boolean))`
@@ -851,7 +851,7 @@ class keycloakExpressMiddleware {
      * app.get('/encodeTokenPermission',
      *     keycloakAdapter.encodeTokenPermission(),
      *     (req, res) => {
-     *         req.encodedTokenPremission.hasPermission('ui-admin-resource', function(perm) {
+     *         req.encodedTokenPermission.hasPermission('ui-admin-resource', function(perm) {
      *             if (perm)
      *                 res.send('You are an authorized admin User by function permission parameters');
      *             else
@@ -907,7 +907,7 @@ class keycloakExpressMiddleware {
     encodeTokenPermission(){
         const self = this;
         return(function (req,res,next){
-            req.encodedTokenPremission={
+            req.encodedTokenPermission={
                 "hasPermission":function(permission,callback){
                     self.#encodeTokenPermissionHandler(permission,req,res,callback);
                 }
@@ -1286,6 +1286,8 @@ class keycloakExpressMiddleware {
 
 
 module.exports = keycloakExpressMiddleware;
+module.exports.keycloackAdapter = keycloakExpressMiddleware; // Named export for backward compatibility and ES6 support
+module.exports.default = keycloakExpressMiddleware; // Default export for ES6 modules
 
 /*
  <table><tbody>
