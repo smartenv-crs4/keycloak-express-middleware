@@ -148,14 +148,7 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 ## 📄 Usage Example
 ```js
 const express = require('express');
-// CommonJS - Default import
 const keycloackAdapter = require('keycloak-express-middleware');
-
-// ES6 - Named import (recommended for clarity)
-// import { keycloackAdapter } from 'keycloak-express-middleware';
-
-// ES6 - Default import
-// import keycloackAdapter from 'keycloak-express-middleware';
 
 const app = express();
 
@@ -176,28 +169,6 @@ const keycloakInstance = new keycloackAdapter(app,{
             secret: 'mySecretForSession',
         }
     });
-
-/*
-OLD STYLE UP TO VERSION 3.0.9
-// Configure and Initialize Keycloak adapter
-await keycloackAdapter.configure(app,{
-        "realm": "Realm-Project",
-        "auth-server-url": "https://YourKeycloakUrl:30040/",
-        "ssl-required": "external",
-        "resource": "keycloackclientName",
-        "credentials": {
-            "secret": "aaaaaaaaaa"
-        },
-        "confidential-port": 0
-    },
-    {
-        session:{
-            secret: 'mySecretForSession',
-        }
-    });
-*/
-
-
 
 // -------------- Public route  -----------------------
 app.get('/', (req, res) => {
@@ -607,6 +578,22 @@ The constructor is synchronous and returns the configured instance immediately.
   - **idpHint:** to suggest an identity provider to Keycloak during login
   - **cookies:** to enable cookie handling
   - **realmUrl:** to override the realm URL
+
+### Import Alternatives
+
+While the examples use CommonJS (`require`), the library also supports ES6 module syntax:
+
+```js
+// CommonJS (Default)
+const keycloackAdapter = require('keycloak-express-middleware');
+
+// ES6 - Named import (recommended for clarity)
+import { keycloackAdapter } from 'keycloak-express-middleware';
+
+// ES6 - Default import
+import keycloackAdapter from 'keycloak-express-middleware';
+```
+
 ---
 ## 🔧 Available Middlewares
 ### `underKeycloakProtection(callback) - deprecated - ` 
