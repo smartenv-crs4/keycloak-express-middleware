@@ -148,7 +148,14 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 ## 📄 Usage Example
 ```js
 const express = require('express');
+// CommonJS - Default import
 const keycloackAdapter = require('keycloak-express-middleware');
+
+// ES6 - Named import (recommended for clarity)
+// import { keycloackAdapter } from 'keycloak-express-middleware';
+
+// ES6 - Default import
+// import keycloackAdapter from 'keycloak-express-middleware';
 
 const app = express();
 
@@ -596,50 +603,6 @@ import keycloackAdapter from 'keycloak-express-middleware';
 
 ---
 ## 🔧 Available Middlewares
-### `underKeycloakProtection(callback) - deprecated - ` 
-**@deprecated Method**. In the new OOP version (4.0.0+), simply instantiate the middleware and define your routes normally:
-```js
-    const keycloakAdapter = require('keycloak-express-middleware');
-    const keycloakInstance = new keycloakAdapter(app, keyCloakConfig, keyCloakOptions);
-    
-    // Define all your routes here
-    app.get('/my-route', keycloakInstance.protectMiddleware(), handler);
-```
-
-This Method is deprecated and will be removed in future versions. It was used in versions prior to 4.0.0.
-The routes declared inside the provided callback will be protected and will have access to authentication/authorization features managed by Keycloak.
-
-📌 Public (unprotected) routes should be declared **before** calling this method. 
-
-**` -- @parameters -- `** 
-- **{Function} callback:** `[required]` A function that defines all routes to be protected. It must contain exclusively routes requiring authentication.
-
-✅ Usage example:
-```js
-// Public route not protected by Keycloak
-app.get('/public', (req, res) => {
-res.send('Public content');
-});
-
-// Section of routes protected by Keycloak
-keycloakAdapter.underKeycloakProtection(() => {
-
-    // This function is deprecated and will be removed in future versions. 
-    // It is retained only for backward compatibility with older versions
-    
-    // Route protected by authentication
-    app.get('/confidential', keycloakAdapter.protectMiddleware(), (req, res) => {
-        res.send('Confidential content visible only to authenticated users');
-    });
-
-    // Route with forced login: handled directly by middleware
-    app.get('/loginMiddleware', keycloakAdapter.loginMiddleware("/home"), (req, res) => {
-        // This response will never be sent because the middleware handles the 
-        // request directly
-    });
-});
-```
----
 ### `protectMiddleware([conditions])`
 Middleware to protect Express routes based on authentication and, optionally, authorization via Keycloak roles. 
 Allows restricting access to a resource only to authenticated users or to those possessing specific roles in the realm or in a Keycloak client.
