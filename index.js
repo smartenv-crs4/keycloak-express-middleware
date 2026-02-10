@@ -339,6 +339,11 @@ class keycloakExpressMiddleware {
             return this.keycloak.protect(conditions);
         }
 
+        // Se conditions è null, undefined o non fornito, delega a keycloak.protect() senza parametri
+        if (conditions === null || conditions === undefined) {
+            return this.keycloak.protect();
+        }
+
         // Altrimenti, gestisci ruoli singoli o multipli
         return (req, res, next) => {
             const roles = Array.isArray(conditions) ? conditions : [conditions];
@@ -421,11 +426,10 @@ class keycloakExpressMiddleware {
      */
 
     customProtectMiddleware(customFunction){
-        const self = this;
-        return function(req, res, next){
+        return (req, res, next) => {
             let protectionString=customFunction(req,res);
-            self.keycloak.protect(protectionString)(req,res,next);
-        }
+            this.keycloak.protect(protectionString)(req,res,next);
+        };
     }
 
 
