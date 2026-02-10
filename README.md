@@ -15,7 +15,7 @@ it is based on **'keycloak-connect'**, and **'express-session'**
 - 🌍 CORS support and integration with frontend apps (SPA or mobile)
 ---
 ## ⚠️ keycloak-express-middleware evolution starting from Version 4.0.0
-The new version of keycloak-express-middleware (currently at version 6.0.2) introduces a substantial evolution in its architecture. 
+The new version of keycloak-express-middleware introduces a substantial evolution in its architecture. 
 It now embraces an object-oriented paradigm, which means each instance of the middleware is self-contained and independent. 
 Concretely, you can instantiate the library multiple times within the same application—each time pointing to a different client in Keycloak 
 and the instances will not share internal connections or state across modules. 
@@ -26,7 +26,7 @@ application scope.  By moving to this new ***one instance = one client*** model,
  - isolating middleware logic per client without risking cross-contamination of sessions or grants, 
  - simplifying multitenancy or micro-service architectures where different parts of an app authenticate against different Keycloak clients. 
  
-**To summarize:** the new version (4.0.0+, currently 6.0.2) enables multi-client usage within the same app by turning the middleware into configurable,
+**To summarize:** the new version (4.0.0+) enables multi-client usage within the same app by turning the middleware into configurable,
 independent object instances — something that the earlier version did not support.
 
 ### 🏗️ Migration Guide: From Old to New Version
@@ -66,7 +66,7 @@ app.get('/privateStaticClientRole', keycloackAdapter.protectMiddleware("admin"),
 🆕 New Version (Object-Oriented Design) - Version 4.0.0+
 
 ```js
-// NEW VERSION STARTING FROM 4.0.0 (currently 6.0.2)
+// NEW VERSION STARTING FROM 4.0.0
 const express = require('express');
 const { keycloackAdapter } = require('keycloak-express-middleware');
 
