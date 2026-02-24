@@ -1482,7 +1482,7 @@ class keycloakExpressMiddleware {
      * @returns {Promise<Object>} Token response from Keycloak
      * @throws {Error} If token request fails
      */
-    async login(credentials = {}) {
+    async loginWithCredentials(credentials = {}) {
         if (!this.authServerUrl || !this.realmName) {
             throw new Error(
                 'login requires middleware to be initialized with valid authServerUrl and realmName'
@@ -1580,7 +1580,7 @@ class keycloakExpressMiddleware {
             throw new Error('loginPKCE requires "code_verifier" (or "codeVerifier").');
         }
 
-        return this.login({
+        return this.loginWithCredentials({
             grant_type: 'authorization_code',
             code: resolvedCode,
             redirect_uri: resolvedRedirectUri,
@@ -1602,9 +1602,16 @@ class keycloakExpressMiddleware {
 }
 
 
+// Main CommonJS export (required for require() to work)
 module.exports = keycloakExpressMiddleware;
-module.exports.keycloackAdapter = keycloakExpressMiddleware; // Named export for backward compatibility and ES6 support
-module.exports.default = keycloakExpressMiddleware; // Default export for ES6 modules
+
+// Backward compatibility alias - allows: const { keycloackAdapter } = require(...)
+// Note: keeping original typo "keycloack" for backward compatibility
+module.exports.keycloackAdapter = keycloakExpressMiddleware;
+
+// ES6-style default export simulation
+// Allows pattern: const middleware = require(...).default (when needed by some bundlers)
+module.exports.default = keycloakExpressMiddleware;
 
 /*
  <table><tbody>

@@ -1,0 +1,45 @@
+
+version: '3.8'
+
+# Keycloak Test Server Configuration (allineato a keycloak-api-manager)
+# Supporta HTTP (dev) e HTTPS (prod-like) tramite variabili d'ambiente
+
+services:
+  keycloak:
+    image: keycloak/keycloak:latest
+    container_name: keycloak-test
+    ports:
+      - "8080:8080"
+      - "${KEYCLOAK_HTTPS_PORT:-8443}:8443"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: dev-mem
+      KC_METRICS_ENABLED: 'false'
+      KC_HEALTH_ENABLED: 'true'
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      KC_SCHEME: ${KEYCLOAK_SCHEME:-http}
+      KC_HTTP_PORT: 8080
+      KC_HTTPS_PORT: 8443
+      KC_HTTP_ENABLED: 'true'
+      KC_PROXY: reencrypt
+      KC_HOSTNAME_STRICT: 'false'
+      KC_HOSTNAME_STRICT_HTTPS: 'false'
+      KC_FEATURES: 'admin-fine-grained-authz:v1,organization,client-policies'
+    volumes:
+      - "${KEYCLOAK_CERT_PATH:-./certs}:/etc/keycloak/certs:ro"
+    command:
+      - start-dev
+      - --https-certificate-file=/etc/keycloak/certs/keycloak.crt
+      - --https-certificate-key-file=/etc/keycloak/certs/keycloak.key
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - keycloak-network
+
+networks:
+  keycloak-network:
+    driver: bridge

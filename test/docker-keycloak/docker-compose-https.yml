@@ -1,0 +1,46 @@
+
+version: '3.8'
+
+# Keycloak HTTPS Configuration (allineato a keycloak-api-manager)
+# Usa KEYCLOAK_CERT_PATH e KEYCLOAK_HOSTNAME da .env
+
+services:
+  keycloak:
+    image: keycloak/keycloak:latest
+    container_name: keycloak-test
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: dev-mem
+      KC_METRICS_ENABLED: 'false'
+      KC_HEALTH_ENABLED: 'true'
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-keycloak.local}
+      KC_SCHEME: https
+      KC_HTTP_PORT: 8080
+      KC_HTTPS_PORT: 8443
+      KC_HTTP_ENABLED: 'true'
+      KC_PROXY: reencrypt
+      KC_HOSTNAME_STRICT: 'false'
+      KC_HOSTNAME_STRICT_HTTPS: 'false'
+      KC_FEATURES: 'admin-fine-grained-authz:v1,organization,client-policies'
+    volumes:
+      - "${KEYCLOAK_CERT_PATH}/keycloak.crt:/etc/keycloak/certs/keycloak.crt:ro"
+      - "${KEYCLOAK_CERT_PATH}/keycloak.key:/etc/keycloak/certs/keycloak.key:ro"
+    command:
+      - start-dev
+      - "--https-certificate-file=/etc/keycloak/certs/keycloak.crt"
+      - "--https-certificate-key-file=/etc/keycloak/certs/keycloak.key"
+    healthcheck:
+      test: ["CMD", "curl", "-fk", "https://localhost:8443/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - keycloak-network
+
+networks:
+  keycloak-network:
+    driver: bridge

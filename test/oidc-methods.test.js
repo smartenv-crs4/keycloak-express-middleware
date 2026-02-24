@@ -37,7 +37,7 @@ const oidcMethods = require('../oidc-methods.js');
 
 // Bind methods to mock class prototype
 MockKeycloakExpressMiddleware.prototype.generateAuthorizationUrl = oidcMethods.generateAuthorizationUrl;
-MockKeycloakExpressMiddleware.prototype.login = oidcMethods.login;
+MockKeycloakExpressMiddleware.prototype.loginWithCredentials = oidcMethods.loginWithCredentials;
 MockKeycloakExpressMiddleware.prototype.loginPKCE = oidcMethods.loginPKCE;
 
 describe('OIDC Methods', function() {
@@ -170,12 +170,12 @@ describe('OIDC Methods', function() {
     });
   });
 
-  describe('login()', function() {
+  describe('loginWithCredentials()', function() {
     it('should throw error if adapter not configured', async function() {
       const unconfigured = new MockKeycloakExpressMiddleware(null, null, null);
 
       try {
-        await unconfigured.login({ grant_type: 'client_credentials' });
+        await unconfigured.loginWithCredentials({ grant_type: 'client_credentials' });
         assert.fail('should have thrown error');
       } catch (error) {
         assert(error.message.includes('initialized'), 'should mention initialization');
@@ -204,7 +204,7 @@ describe('OIDC Methods', function() {
       };
 
       try {
-        await adapter.login({
+        await adapter.loginWithCredentials({
           grant_type: 'client_credentials',
           scope: 'openid'
         });
@@ -233,7 +233,7 @@ describe('OIDC Methods', function() {
       };
 
       try {
-        await adapter.login({ grant_type: 'password', username: 'user', password: 'pass' });
+        await adapter.loginWithCredentials({ grant_type: 'password', username: 'user', password: 'pass' });
 
         assert(capturedBody.get('client_id') === 'my-client', 'should auto-append clientId');
       } finally {
@@ -257,7 +257,7 @@ describe('OIDC Methods', function() {
       };
 
       try {
-        await adapter.login({ grant_type: 'client_credentials' });
+        await adapter.loginWithCredentials({ grant_type: 'client_credentials' });
 
         assert(capturedBody.get('client_secret') === 'my-secret', 'should auto-append clientSecret');
       } finally {
@@ -281,7 +281,7 @@ describe('OIDC Methods', function() {
       };
 
       try {
-        const result = await adapter.login({ grant_type: 'client_credentials' });
+        const result = await adapter.loginWithCredentials({ grant_type: 'client_credentials' });
 
         assert.strictEqual(result.access_token, 'jwt-token-123');
         assert.strictEqual(result.refresh_token, 'refresh-token-456');
@@ -305,7 +305,7 @@ describe('OIDC Methods', function() {
       };
 
       try {
-        await adapter.login({ grant_type: 'client_credentials' });
+        await adapter.loginWithCredentials({ grant_type: 'client_credentials' });
         assert.fail('should have thrown error');
       } catch (error) {
         assert(error.message.includes('Invalid client'), 'should include error description');

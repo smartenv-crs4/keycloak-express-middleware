@@ -1,0 +1,22 @@
+{
+  "name": "keycloak-express-middleware-test",
+  "version": "1.0.0",
+  "description": "Test suite for keycloak-express-middleware",
+  "private": true,
+  "scripts": {
+    "test": "NODE_ENV=test PROPERTIES_PATH=./config mocha --require support/setup.js --exit"
+  },
+  "dependencies": {
+    "@keycloak/keycloak-admin-client": "^26.5.3",
+    "chai": "^4.3.7",
+    "express": "^4.18.2",
+    "keycloak-connect": "^18.0.2",
+    "keycloak-express-middleware": "file:..",
+    "node-fetch": "^2.6.7",
+    "propertiesmanager": "^4.1.0",
+    "supertest": "^6.3.3"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "production": {
+    "keycloak": {
+      "baseUrl": "http://localhost:8080"
+    }
+  },
+  "test": {
+    "keycloak": {
+      "baseUrl": "https://smart-dell-sml.crs4.it:8443",
+      "realm": "express-middleware-test",
+      "clientId": "express-middleware-test-client",
+      "clientSecret": "test-client-secret",
+      "testUser": "test-user"    }
+  }
+}

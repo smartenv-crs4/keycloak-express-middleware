@@ -1,0 +1,10 @@
+# SSL/TLS Certificates - DO NOT COMMIT
+# These are auto-signed or production certificates and should never be committed to version control
+*.crt
+*.key
+*.pem
+*.cert
+
+# Keep .gitkeep to maintain folder structure
+!.gitkeep
+!README.md

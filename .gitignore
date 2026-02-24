@@ -1,0 +1,16 @@
+# Ignore local secrets and sensitive config
+
+test/config/secrets.json
+
+test/node_modules/
+test/.env
+test/.cache/
+test/.coverage/
+test/.DS_Store
+test/*.log
+node_modules/
+.DS_Store
+.env
+.cache/
+coverage/
+*.log

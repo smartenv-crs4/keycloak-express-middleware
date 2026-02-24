@@ -3,8 +3,16 @@
   "version": "6.1.0",
   "description": "Adapter API to integrate Node.js (Express) applications with Keycloak. Provides middleware for authentication, authorization, token validation, and route protection via OpenID Connect.",
   "main": "index.js",
+  "exports": {
+    ".": {
+      "require": "./index.js",
+      "import": "./index.js",
+      "default": "./index.js"
+    }
+  },
   "scripts": {
-    "test": "mocha"
+    "test": "NODE_ENV=test node test/helpers/keycloak-setup.js && npm --prefix test install && npm --prefix test test",
+    "setup-keycloak": "eval \"$(ssh-agent -s)\" && ssh-add ~/.ssh/id_ed25519 && NODE_ENV=test node test/docker-keycloak/setup-keycloak.js"
   },
   "dependencies": {
     "@keycloak/keycloak-admin-client": "^26.3.2",

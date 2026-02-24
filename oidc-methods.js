@@ -159,7 +159,7 @@ function generateAuthorizationUrl(options = {}) {
  * 
  * @example
  * // Resource Owner Password Grant
- * const tokens = await keycloakAdapter.login({
+ * const tokens = await keycloakAdapter.loginWithCredentials({
  *   grant_type: 'password',
  *   username: 'user@example.com',
  *   password: 'password123',
@@ -168,22 +168,22 @@ function generateAuthorizationUrl(options = {}) {
  * 
  * @example
  * // Client Credentials Grant
- * const tokens = await keycloakAdapter.login({
+ * const tokens = await keycloakAdapter.loginWithCredentials({
  *   grant_type: 'client_credentials',
  *   scope: 'openid profile'
  * });
  * 
  * @example
  * // Refresh Token Grant
- * const tokens = await keycloakAdapter.login({
+ * const tokens = await keycloakAdapter.loginWithCredentials({
  *   grant_type: 'refresh_token',
  *   refresh_token: oldRefreshToken
  * });
  */
-async function login(credentials = {}) {
+async function loginWithCredentials(credentials = {}) {
   if (!this.authServerUrl || !this.realmName) {
     throw new Error(
-      'login requires middleware to be initialized with valid authServerUrl and realmName'
+      'loginWithCredentials requires middleware to be initialized with valid authServerUrl and realmName'
     );
   }
 
@@ -309,7 +309,7 @@ async function loginPKCE(credentials = {}) {
     throw new Error('loginPKCE requires "code_verifier" (or "codeVerifier").');
   }
 
-  return this.login({
+  return this.loginWithCredentials({
     grant_type: 'authorization_code',
     code: resolvedCode,
     redirect_uri: resolvedRedirectUri,
@@ -322,6 +322,6 @@ async function loginPKCE(credentials = {}) {
 
 module.exports = {
   generateAuthorizationUrl,
-  login,
+  loginWithCredentials,
   loginPKCE
 };
