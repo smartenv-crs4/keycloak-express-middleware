@@ -1,38 +1,74 @@
-# 🔐 Keycloak Express middleware for Node.js (Express)
 
-> 🚩 **Tutta la documentazione aggiornata, guide, migrazione, OIDC, test e configurazione sono ora centralizzate in [docs/README.md](docs/README.md).**
->
-> Consulta solo la cartella `docs/` per tutte le informazioni tecniche, guide di integrazione, status di migrazione e dettagli di utilizzo.
+# 🔐 keycloak-express-middleware for Node.js (Express)
+
+Middleware avanzato per l'integrazione di Keycloak in applicazioni Node.js/Express.
+
+## Caratteristiche principali
+
+- Supporto completo OIDC/OAuth2 (PKCE, Authorization Code, Client Credentials, Password, Refresh Token)
+- Middleware Express per autenticazione, autorizzazione, enforcer UMA 2.0, gestione ruoli e permessi
+- Helpers per login/logout, flussi custom, gestione sessioni e callback
+- Compatibile con keycloak-connect e @keycloak/keycloak-admin-client
+- Documentazione bilingue (IT/EN) e esempi pratici
+
+## Installazione
+
+```bash
+npm install keycloak-express-middleware
+```
+
+## Utilizzo base
+
+```js
+const express = require('express');
+const KeycloakAdapter = require('keycloak-express-middleware');
+
+const app = express();
+const keycloak = new KeycloakAdapter({
+	authServerUrl: 'https://keycloak.example.com/',
+	realmName: 'myrealm',
+	clientId: 'myclient',
+	clientSecret: 'secret',
+});
+
+app.use(keycloak.middleware());
+
+app.get('/private', keycloak.protectMiddleware('admin'), (req, res) => {
+	res.send('Area riservata agli admin!');
+});
+
+app.listen(3000);
+```
+
+## Documentazione
+
+La documentazione completa (setup, configurazione, OIDC, test, troubleshooting, architettura) è in [docs/README.md](docs/README.md).
+
+### Sezioni principali:
+- **Setup e configurazione**: come integrare e configurare il middleware
+- **Esempi di utilizzo**: snippet e best practice
+- **Test e infrastruttura di test**: [docs/testing.md](docs/testing.md)
+- **Troubleshooting**: risoluzione problemi comuni
+- **Architettura**: overview moduli e flussi
+
+## Testing
+
+L'infrastruttura di test automatica è documentata in [docs/testing.md](docs/testing.md) e nella sezione "Test" della documentazione principale.
+
+Per eseguire i test:
+
+```bash
+npm run setup-keycloak
+npm test
+```
+
+## License
+
+MIT License. Developed by CRS4 Microservice Core Team.
 
 ---
 
-## 📝 License
-
-This project is licensed under the MIT License.
-
-Copyright (c) 2025 CRS4, aromanino, gporruvecchio
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
----
-
-## 🙋‍♂️ Contributions
+## Contributions
 
 Contributions, issues and feature requests are welcome!
 
@@ -44,13 +80,12 @@ Contributions, issues and feature requests are welcome!
 
 ---
 
-## 👨‍💻 Maintainer
+## Maintainers
 
-Developed and maintained by [CRS4 Microservice Core Team ([cmc.smartenv@crs4.it](mailto:cmc.smartenv@crs4.it))] – feel free to reach out for questions or suggestions.
+Developed and maintained by [CRS4 Microservice Core Team](mailto:cmc.smartenv@crs4.it)
 
-Design and development
-------
-Alessandro Romanino ([a.romanino@gmail.com](mailto:a.romanino@gmail.com))<br>
-Guido Porruvecchio ([guido.porruvecchio@gmail.com](mailto:guido.porruvecchio@gmail.com))
+Design and development:
+- Alessandro Romanino ([a.romanino@gmail.com](mailto:a.romanino@gmail.com))
+- Guido Porruvecchio ([guido.porruvecchio@gmail.com](mailto:guido.porruvecchio@gmail.com))
 
 

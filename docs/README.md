@@ -42,127 +42,33 @@ Complete documentation for keycloak-express-middleware testing infrastructure.
   - Test architecture and layers
   - Running tests locally and in CI/CD
   - Global initialization flow
-  - Writing new tests
-  - Debugging test failures
+  # Documentazione keycloak-express-middleware
 
-- **[Architecture](architecture.md)**
-  - Package structure and modules
-  - Core OIDC methods
-  - Middleware pattern
-  - Runtime initialization sequence
-  - Design principles and resilience
+  Questa directory contiene la documentazione tecnica completa del pacchetto, inclusi:
 
-## Common Tasks
+  - Setup e deployment ([deployment.md](deployment.md))
+  - Requisiti e configurazione Keycloak ([keycloak-setup.md](keycloak-setup.md))
+  - Gestione configurazione ([test-configuration.md](test-configuration.md))
+  - Architettura e moduli ([architecture.md](architecture.md))
+  - **Test e infrastruttura di test** ([testing.md](testing.md))
 
-### Setup Keycloak for Testing
+  Consulta il [README principale](../README.md) per overview, installazione e utilizzo base.
 
-```bash
-# Interactive setup (guided)
-npm run setup-keycloak
+  ---
 
-# Or manually:
-cd test/docker-keycloak
-docker-compose up -d          # For HTTP (localhost:8080)
-# OR
-docker-compose -f docker-compose-https.yml up -d  # For HTTPS (localhost:8443)
-```
+  ## Indice documentazione
 
-### Run Tests
+  - [deployment.md](deployment.md): guida setup e deployment
+  - [keycloak-setup.md](keycloak-setup.md): requisiti server Keycloak
+  - [test-configuration.md](test-configuration.md): gestione configurazione
+  - [architecture.md](architecture.md): architettura e moduli
+  - [testing.md](testing.md): guida test automatizzati
 
-```bash
-# Full suite
-npm test
+  ---
 
-# Specific file
-npm --prefix test test oidc-methods.test.js
+  ## Note sicurezza
 
-# Matching pattern
-npm --prefix test test -- --grep "PKCE"
-```
-
-### Update Keycloak URL
-
-```bash
-# Automatic update with verification
-npm run setup-keycloak
-
-# Manual: Edit test/config/default.json
-# → Update test.keycloak.baseUrl
-```
-
-### Add SSL Certificates
-
-See [certs/README.md](../test/docker-keycloak/certs/README.md) for:
-- Self-signed certificate generation
-- Let's Encrypt integration
-- Certificate validation and security
-
-## File Structure
-
-```
-docs/
-├── README.md                    # This file (documentation index)
-├── deployment.md                # Setup and deployment guide
-├── keycloak-setup.md            # Keycloak server requirements
-├── test-configuration.md        # Configuration management
-├── testing.md                   # Test execution and writing
-└── architecture.md              # System design and modules
-```
-
-## Configuration Hierarchy
-
-```
-test/config/
-├── default.json (committed)
-│   └─ Production and test default settings
-├── secrets.json.example (committed)
-│   └─ Template for secrets.json (edit and copy locally)
-├── secrets.json (git-ignored, locale!)
-│   └─ Passwords, API keys, testPassword, adminPassword, clientSecret
-└── local.json (git-ignored)
-    └─ Developer machine overrides (optional)
-```
-
-Quando `NODE_ENV=test`, viene caricato solo il blocco "test" di questi file.
-
-## Test Infrastructure
-
-```
-test/
-├── support/
-│   ├── setup.js                 # Global Mocha hooks
-│   └── enableServerFeatures.js  # Realm/client creation
-├── helpers/
-│   └── config.js                # Config loader
-├── docker-keycloak/
-│   ├── setup-keycloak.js        # Interactive setup command
-│   ├── docker-compose.yml       # HTTP deployment
-│   ├── docker-compose-https.yml # HTTPS deployment
-│   └── certs/                   # SSL certificates folder
-├── oidc-methods.test.js         # Unit and integration tests
-└── .mocharc.json                # Mocha configuration
-```
-
-## Key Concepts
-
-### PropertiesManager Configuration
-
-Configuration is environment-aware:
-```javascript
-// When NODE_ENV=test:
-const pm = require('propertiesmanager').conf
-pm.keycloak.baseUrl  // From "test" block in config files
-```
-
-### Graceful Degradation
-
-Tests work even without Keycloak:
-- ✓ Unit tests always run (mocked/local logic)
-- ⊘ Integration tests skip gracefully (if Keycloak unavailable)
-- ⚠️ Warning shown but process continues
-
-### Self-Signed Certificate Support
-
+  ⚠️ **Attenzione:** Il file `test/config/secrets.json` contiene tutte le password e i segreti sensibili. NON va mai committato! Usa `secrets.json.example` come template e personalizza solo in locale.
 For HTTPS testing:
 ```javascript
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'  // Trusted during tests only
