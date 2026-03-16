@@ -11,6 +11,22 @@ It is based on **'keycloak-connect'** and **'express-session'**.
 - [Installation](#installation)
 - [Get Keycloak Configuration](#get-keycloak-configuration)
 - [API Documentation](#api-documentation)
+- [API - Constructor](#api---constructor)
+- [API - underKeycloakProtection (deprecated)](#api---underkeycloakprotection-deprecated)
+- [API - protectMiddleware](#api---protectmiddlewareconditions)
+- [API - customProtectMiddleware](#api---customprotectmiddlewarecustomfunction)
+- [API - enforcerMiddleware](#api---enforcermiddlewareconditions-options)
+- [API - customEnforcerMiddleware](#api---customenforcermiddlewarecustomfunction-options)
+- [API - encodeTokenRole](#api---encodetokenrole)
+- [API - encodeTokenPermission](#api---encodetokenpermission)
+- [API - loginMiddleware](#api---loginmiddlewareredirectto)
+- [API - logoutMiddleware](#api---logoutmiddlewareredirectto)
+- [API - login](#api---loginreq-res-redirectto)
+- [API - logout](#api---logoutreq-res-redirectto)
+- [API - generateAuthorizationUrl](#api---generateauthorizationurloptions)
+- [API - loginWithCredentials](#api---loginwithcredentialscredentials)
+- [API - loginPKCE](#api---loginpkcecredentials)
+- [API - redirectToUserAccountConsole](#api---redirecttouseraccountconsoleres)
 - [Full Usage Example](#full-usage-example)
 - [Handling Unauthorized Access (401/403) Gracefully](#handling-unauthorized-access-401403-gracefully)
 - [Testing Documentation](#testing-documentation)
@@ -163,88 +179,389 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 ---
 ## API Documentation
 
-This section centralizes the API overview directly in the main README.
+This section documents each public API exposed by the middleware class.
 
-### Constructor and Initialization
+### API - Constructor
 
-- `new keycloakAdapter(app, keycloakConfig, keycloakOptions)`
-- Creates an independent adapter instance.
-- Must be initialized before protected routes are declared.
+`new keycloakAdapter(app, keycloakConfig, keycloakOptions = {})`
 
-Main parameters:
+Creates an independent middleware instance bound to one Keycloak client.
 
-- `app`: Express app or router instance.
-- `keycloakConfig`: Keycloak client configuration (realm, auth-server-url, resource, credentials, etc.).
-- `keycloakOptions`: runtime options, including session, scope, idpHint, cookies, realmUrl.
+Parameters:
 
-### Route Protection and Authorization
+- `app` (Object, required): Express app or router instance.
+- `keycloakConfig` (Object, required): Keycloak client config (`realm`, `auth-server-url`, `resource`, `credentials`, etc.).
+- `keycloakOptions` (Object, optional): advanced options.
 
-- `protectMiddleware(conditions?)`: authentication check plus optional role checks.
-- `customProtectMiddleware(fn)`: dynamic role string based on request data.
-- `enforcerMiddleware(conditions, options?)`: permission checks using Keycloak Authorization Services.
-- `customEnforcerMiddleware(fn, options?)`: dynamic permission checks from request context.
+Supported options in `keycloakOptions`:
 
-### Token Helper Middleware
+- `session` (Object): when provided, the adapter initializes `express-session` with MemoryStore.
+- `session.secret` (string): session secret.
+- `session.resave` (boolean): Express session `resave`.
+- `session.saveUninitialized` (boolean): Express session `saveUninitialized`.
+- `realmName` (string): optional realm override.
+- `clientId` (string): optional client id override.
+- `clientSecret` (string): optional client secret override.
+- `scope`, `idpHint`, `cookies`, `realmUrl` (optional): forwarded to Keycloak adapter behavior.
 
-- `encodeTokenRole()`: decodes token and exposes role helpers on request.
-- `encodeTokenPermission()`: decodes token and exposes permission helpers on request.
+Returns:
 
-### Session and Navigation Helpers
+- A configured middleware instance.
 
-- `loginMiddleware(redirectTo)`: middleware login flow with redirect.
-- `logoutMiddleware(redirectTo)`: middleware logout flow with redirect.
-- `login(req, res, redirectTo)`: imperative login in route handlers.
-- `logout(req, res, redirectTo)`: imperative logout in route handlers.
-- `redirectToUserAccountConsole(res)`: redirect to Keycloak user account console.
+### API - underKeycloakProtection (deprecated)
 
-### OIDC Token Endpoint Helpers
+`underKeycloakProtection(callback)`
 
-- `generateAuthorizationUrl(options)`: builds authorization URL and PKCE material.
-- `loginWithCredentials(credentials)`: token endpoint call for OAuth2 grants.
-- `loginPKCE(credentials)`: authorization code + PKCE verifier token exchange.
+Deprecated helper kept for backward compatibility. It executes `callback` when middleware is ready.
 
-### Practical Method Selection Examples
+Parameters:
 
-Use the method that best matches your route behavior and security requirement.
+- `callback` (Function, required): function used to declare protected routes.
+
+Returns:
+
+- `void`.
+
+Example:
 
 ```js
-// 1) Authentication-only route
-app.get('/private', keycloakInstance.protectMiddleware(), handler);
-
-// 2) Role-based route
-app.get('/admin', keycloakInstance.protectMiddleware('admin'), handler);
-
-// 3) Permission-based route (Authorization Services)
-app.get('/report', keycloakInstance.enforcerMiddleware('report-resource:view'), handler);
-
-// 4) Dynamic permission from URL params
-app.get('/resource/:perm', keycloakInstance.customEnforcerMiddleware((req) => req.params.perm), handler);
+keycloakInstance.underKeycloakProtection(() => {
+    app.get('/private', keycloakInstance.protectMiddleware(), handler);
+});
 ```
 
+### API - protectMiddleware(conditions)
+
+`protectMiddleware(conditions)`
+
+Protects a route by authentication and optional role checks.
+
+Parameters:
+
+- `conditions` (optional): one of
+- `undefined` or `null`: authentication only.
+- `string`: one role expression.
+- `string[]`: any-of role expressions.
+- `function(token, req): boolean`: custom synchronous authorization predicate.
+
+Role formats:
+
+- `'admin'`: role in configured client.
+- `'realm:admin'`: realm role.
+- `'clientid:role'`: role in another client.
+
+Returns:
+
+- Express middleware function.
+
+Token access in route handlers:
+
+- `req.kauth.grant.access_token.content` exposes token claims (scope, username, email, roles, custom claims).
+
+Example:
+
 ```js
-// 5) PKCE start (login initiation)
+app.get('/admin', keycloakInstance.protectMiddleware('admin'), (req, res) => {
+    const token = req.kauth.grant.access_token.content;
+    res.json({ user: token.preferred_username, scope: token.scope });
+});
+```
+
+### API - customProtectMiddleware(customFunction)
+
+`customProtectMiddleware(customFunction)`
+
+Builds the role expression dynamically per request.
+
+Parameters:
+
+- `customFunction` (Function, required): `(req, res) => string`.
+
+Returns:
+
+- Express middleware function.
+
+Example:
+
+```js
+app.get('/tenant/:role', keycloakInstance.customProtectMiddleware((req) => {
+    return req.params.role;
+}), handler);
+```
+
+### API - enforcerMiddleware(conditions, options)
+
+`enforcerMiddleware(conditions, options)`
+
+Performs permission checks using Keycloak Authorization Services (UMA 2.0).
+
+Parameters:
+
+- `conditions` (required): one of
+- `string | string[]`: static permission/resource expression(s).
+- `function(token, req, callback)`: custom async check where `callback(true|false)` decides access.
+- `options` (Object, optional): forwarded to `keycloak.enforcer(...)`.
+- `options.response_mode`: `'permissions'` (default) or `'token'`.
+- `options.claims`: claims object for policy evaluation.
+- `options.resource_server_id`: resource server client id.
+
+Returns:
+
+- Express middleware function.
+
+Example:
+
+```js
+app.get('/report', keycloakInstance.enforcerMiddleware('report-resource:view'), handler);
+```
+
+### API - customEnforcerMiddleware(customFunction, options)
+
+`customEnforcerMiddleware(customFunction, options)`
+
+Same model as `enforcerMiddleware`, but the permission string is generated from request context.
+
+Parameters:
+
+- `customFunction` (Function, required): `(req, res) => string`.
+- `options` (Object, optional): same options accepted by `enforcerMiddleware`.
+
+Returns:
+
+- Express middleware function.
+
+Example:
+
+```js
+app.get('/resource/:permission', keycloakInstance.customEnforcerMiddleware((req) => {
+    return req.params.permission;
+}), handler);
+```
+
+### API - encodeTokenRole
+
+`encodeTokenRole()`
+
+Decodes token and stores it in `req.encodedTokenRole` without directly performing role denial logic.
+
+Returns:
+
+- Express middleware function.
+
+Exposed helper methods on `req.encodedTokenRole`:
+
+- `hasRole('admin')`
+- `hasRole('realm:admin')`
+- `hasRole('clientid:editor')`
+- `hasResourceRole('editor', 'clientid')`
+
+Example:
+
+```js
+app.get('/profile', keycloakInstance.encodeTokenRole(), (req, res) => {
+    const isRealmAdmin = req.encodedTokenRole.hasRole('realm:admin');
+    res.json({ isRealmAdmin });
+});
+```
+
+### API - encodeTokenPermission
+
+`encodeTokenPermission()`
+
+Adds `req.encodedTokenPermission` with a permission probe helper.
+
+Returns:
+
+- Express middleware function.
+
+Exposed API:
+
+- `req.encodedTokenPermission.hasPermission(permission, callback)`
+
+Parameters of helper:
+
+- `permission` (string): permission expression to check.
+- `callback` (Function): receives `true` when allowed, `false` otherwise.
+
+Example:
+
+```js
+app.get('/can-read', keycloakInstance.encodeTokenPermission(), (req, res) => {
+    req.encodedTokenPermission.hasPermission('doc:read', (ok) => {
+        if (ok) return res.send('Allowed');
+        res.status(403).send('Denied');
+    });
+});
+```
+
+### API - loginMiddleware(redirectTo)
+
+`loginMiddleware(redirectTo)`
+
+Forces authentication flow and redirects authenticated users to `redirectTo`.
+
+Parameters:
+
+- `redirectTo` (string, required): post-login redirect URL.
+
+Returns:
+
+- Middleware chain (protect + redirect handler).
+
+Note:
+
+- Route callback after this middleware is not expected to run.
+
+### API - logoutMiddleware(redirectTo)
+
+`logoutMiddleware(redirectTo)`
+
+Destroys local session and redirects through Keycloak logout endpoint when token exists.
+
+Parameters:
+
+- `redirectTo` (string, required): post-logout redirect URL.
+
+Returns:
+
+- Express middleware function.
+
+Behavior:
+
+- If `id_token` exists: builds logout URL, destroys session, redirects to Keycloak logout.
+- If token is missing: direct redirect to `redirectTo`.
+
+### API - login(req, res, redirectTo)
+
+`login(req, res, redirectTo)`
+
+Imperative login function for route-handler usage.
+
+Parameters:
+
+- `req` (Object, required): Express request.
+- `res` (Object, required): Express response.
+- `redirectTo` (string, required): destination after successful authentication.
+
+Returns:
+
+- `void`.
+
+### API - logout(req, res, redirectTo)
+
+`logout(req, res, redirectTo)`
+
+Imperative logout function for route-handler usage.
+
+Parameters:
+
+- `req` (Object, required): Express request.
+- `res` (Object, required): Express response.
+- `redirectTo` (string, required): destination after logout.
+
+Returns:
+
+- `void`.
+
+### API - generateAuthorizationUrl(options)
+
+`generateAuthorizationUrl(options = {})`
+
+Generates authorization URL and PKCE values for login initiation.
+
+Parameters:
+
+- `options.redirect_uri` (string, required): callback URL.
+- `options.redirectUri` (string, optional): camelCase alias of `redirect_uri`.
+- `options.scope` (string, optional): default is `openid profile email`.
+- `options.state` (string, optional): custom state; auto-generated when omitted.
+
+Returns:
+
+- Object with:
+- `authUrl` (string): full authorization URL.
+- `state` (string): CSRF state value.
+- `codeVerifier` (string): PKCE verifier to store server-side.
+
+Example:
+
+```js
 const pkce = keycloakInstance.generateAuthorizationUrl({
     redirect_uri: 'https://app.example.com/auth/callback'
 });
-
 req.session.pkce_state = pkce.state;
 req.session.pkce_verifier = pkce.codeVerifier;
 res.redirect(pkce.authUrl);
 ```
 
+### API - loginWithCredentials(credentials)
+
+`async loginWithCredentials(credentials = {})`
+
+Generic OAuth2 token endpoint helper.
+
+Parameters:
+
+- `credentials.grant_type` (string, required): OAuth2 grant type.
+- Common optional fields:
+- `username`, `password` (password grant)
+- `client_id`, `client_secret`
+- `refresh_token`
+- `code`, `redirect_uri`
+- `scope`
+
+Returns:
+
+- `Promise<Object>` token payload from Keycloak.
+
+Throws:
+
+- `Error` when request fails or payload reports authentication errors.
+
+### API - loginPKCE(credentials)
+
+`async loginPKCE(credentials = {})`
+
+Specialized helper for authorization-code + PKCE callback exchange.
+
+Parameters:
+
+- `credentials.code` (string, required): authorization code.
+- `credentials.redirect_uri` or `credentials.redirectUri` (string, required).
+- `credentials.code_verifier` or `credentials.codeVerifier` (string, required).
+- Optional aliases: `client_id/clientId`, `client_secret/clientSecret`, plus other token params.
+
+Returns:
+
+- `Promise<Object>` token payload.
+
+Throws:
+
+- `Error` when required PKCE fields are missing or exchange fails.
+
+Example:
+
 ```js
-// 6) PKCE callback exchange
 const tokens = await keycloakInstance.loginPKCE({
     code: req.query.code,
     redirect_uri: 'https://app.example.com/auth/callback',
     code_verifier: req.session.pkce_verifier
 });
-
-res.json({
-    tokenType: tokens.token_type,
-    expiresIn: tokens.expires_in
-});
 ```
+
+### API - redirectToUserAccountConsole(res)
+
+`redirectToUserAccountConsole(res)`
+
+Redirects user to Keycloak account console endpoint for current realm.
+
+Parameters:
+
+- `res` (Object, required): Express response.
+
+Returns:
+
+- `void`.
 
 ---
 ## Full Usage Example
