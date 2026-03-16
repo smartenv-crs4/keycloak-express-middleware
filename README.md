@@ -3,17 +3,20 @@ An adapter API to integrate **Node.js Express** applications with **Keycloak** f
 This middleware provides route protection, token validation, and user role management. It is ideal for securing RESTful services, microservices, Express-based backends, and JavaScript frontends.
 It is based on **'keycloak-connect'** and **'express-session'**.
 
-## Start Here: Main Documentation Links
+## Menu
 
-If you are looking for API details or testing documentation, use these direct links:
-
-- API docs (index): [docs/api-reference.md](docs/api-reference.md)
-- API configuration and initialization: [docs/api/configuration.md](docs/api/configuration.md)
-- API route protection: [docs/api/route-protection.md](docs/api/route-protection.md)
-- API OIDC helpers: [docs/api/oidc-token-endpoint.md](docs/api/oidc-token-endpoint.md)
-- Testing environment and scripts: [docs/testing-environment.md](docs/testing-environment.md)
-- Testing guide: [docs/testing.md](docs/testing.md)
-- Full docs index: [docs/README.md](docs/README.md)
+- [Features](#features)
+- [Architecture Evolution Starting from v4.0.0](#architecture-evolution-starting-from-v400)
+- [Migration Guide: From Old to New Version](#migration-guide-from-old-to-new-version)
+- [Installation](#installation)
+- [Get Keycloak Configuration](#get-keycloak-configuration)
+- [API Documentation](#api-documentation)
+- [Full Usage Example](#full-usage-example)
+- [Handling Unauthorized Access (401/403) Gracefully](#handling-unauthorized-access-401403-gracefully)
+- [Testing Documentation](#testing-documentation)
+- [License](#license)
+- [Contributions](#contributions)
+- [Maintainer](#maintainer)
 
 
 ---
@@ -141,31 +144,6 @@ Or, if using Yarn:
 yarn add keycloak-express-middleware
 ```
 
-## Documentation Map
-
-All technical documentation is centralized under `docs/`.
-
-### API Reference
-
-- [API Reference (Index)](docs/api-reference.md)
-- [API - Configuration and Initialization](docs/api/configuration.md)
-- [API - Route Protection](docs/api/route-protection.md)
-- [API - Authorization Services](docs/api/authorization-services.md)
-- [API - Token Decode Helpers](docs/api/token-decode-helpers.md)
-- [API - OIDC Token Endpoint Helpers](docs/api/oidc-token-endpoint.md)
-- [API - Session and Navigation](docs/api/session-and-navigation.md)
-
-### General Documentation
-
-- [Architecture and Runtime](docs/architecture.md)
-- [Deployment Guide](docs/deployment.md)
-- [Keycloak Setup](docs/keycloak-setup.md)
-- [Test Configuration](docs/test-configuration.md)
-- [Testing Environment and Scripts](docs/testing-environment.md)
-- [Testing Guide](docs/testing.md)
-- [OIDC Integration Guide](docs/OIDC_INTEGRATION_GUIDE.md)
-- [Migration Status](docs/MIGRATION_STATUS.md)
-
 ---
 ## Get Keycloak Configuration
 Copy or download your client configuration `keycloak.json` from the Keycloak admin page:
@@ -183,7 +161,93 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 }
 ```
 ---
-## Quick Usage Example
+## API Documentation
+
+This section centralizes the API overview directly in the main README.
+
+### Constructor and Initialization
+
+- `new keycloakAdapter(app, keycloakConfig, keycloakOptions)`
+- Creates an independent adapter instance.
+- Must be initialized before protected routes are declared.
+
+Main parameters:
+
+- `app`: Express app or router instance.
+- `keycloakConfig`: Keycloak client configuration (realm, auth-server-url, resource, credentials, etc.).
+- `keycloakOptions`: runtime options, including session, scope, idpHint, cookies, realmUrl.
+
+### Route Protection and Authorization
+
+- `protectMiddleware(conditions?)`: authentication check plus optional role checks.
+- `customProtectMiddleware(fn)`: dynamic role string based on request data.
+- `enforcerMiddleware(conditions, options?)`: permission checks using Keycloak Authorization Services.
+- `customEnforcerMiddleware(fn, options?)`: dynamic permission checks from request context.
+
+### Token Helper Middleware
+
+- `encodeTokenRole()`: decodes token and exposes role helpers on request.
+- `encodeTokenPermission()`: decodes token and exposes permission helpers on request.
+
+### Session and Navigation Helpers
+
+- `loginMiddleware(redirectTo)`: middleware login flow with redirect.
+- `logoutMiddleware(redirectTo)`: middleware logout flow with redirect.
+- `login(req, res, redirectTo)`: imperative login in route handlers.
+- `logout(req, res, redirectTo)`: imperative logout in route handlers.
+- `redirectToUserAccountConsole(res)`: redirect to Keycloak user account console.
+
+### OIDC Token Endpoint Helpers
+
+- `generateAuthorizationUrl(options)`: builds authorization URL and PKCE material.
+- `loginWithCredentials(credentials)`: token endpoint call for OAuth2 grants.
+- `loginPKCE(credentials)`: authorization code + PKCE verifier token exchange.
+
+### Practical Method Selection Examples
+
+Use the method that best matches your route behavior and security requirement.
+
+```js
+// 1) Authentication-only route
+app.get('/private', keycloakInstance.protectMiddleware(), handler);
+
+// 2) Role-based route
+app.get('/admin', keycloakInstance.protectMiddleware('admin'), handler);
+
+// 3) Permission-based route (Authorization Services)
+app.get('/report', keycloakInstance.enforcerMiddleware('report-resource:view'), handler);
+
+// 4) Dynamic permission from URL params
+app.get('/resource/:perm', keycloakInstance.customEnforcerMiddleware((req) => req.params.perm), handler);
+```
+
+```js
+// 5) PKCE start (login initiation)
+const pkce = keycloakInstance.generateAuthorizationUrl({
+    redirect_uri: 'https://app.example.com/auth/callback'
+});
+
+req.session.pkce_state = pkce.state;
+req.session.pkce_verifier = pkce.codeVerifier;
+res.redirect(pkce.authUrl);
+```
+
+```js
+// 6) PKCE callback exchange
+const tokens = await keycloakInstance.loginPKCE({
+    code: req.query.code,
+    redirect_uri: 'https://app.example.com/auth/callback',
+    code_verifier: req.session.pkce_verifier
+});
+
+res.json({
+    tokenType: tokens.token_type,
+    expiresIn: tokens.expires_in
+});
+```
+
+---
+## Full Usage Example
 ```js
 const express = require('express');
 // CommonJS - Default import
@@ -573,93 +637,16 @@ app.get(
 ---
 
 
-## API Quick Links
+## Testing Documentation
 
-Detailed method-level API documentation lives under docs/api.
+Testing documentation remains in dedicated external pages:
 
-- [API Reference (Index)](docs/api-reference.md)
-- [Configuration and Initialization](docs/api/configuration.md)
-- [Route Protection](docs/api/route-protection.md)
-- [Authorization Services](docs/api/authorization-services.md)
-- [Token Decode Helpers](docs/api/token-decode-helpers.md)
-- [OIDC Token Endpoint Helpers](docs/api/oidc-token-endpoint.md)
-- [Session and Navigation](docs/api/session-and-navigation.md)
-
-### Extended API Overview
-
-The following list helps you quickly identify which method to use, even before opening the detailed API pages.
-
-Route protection and authorization:
-
-- `protectMiddleware(conditions?)`: authentication check, plus optional role validation
-- `customProtectMiddleware(fn)`: dynamic role string based on request data
-- `enforcerMiddleware(conditions, options?)`: permission checks through Keycloak Authorization Services
-- `customEnforcerMiddleware(fn, options?)`: dynamic permission checks from request context
-
-Token helper middleware:
-
-- `encodeTokenRole()`: exposes token role helper on request
-- `encodeTokenPermission()`: exposes permission helper on request
-
-Session and navigation helpers:
-
-- `loginMiddleware(redirectTo)`: force login and redirect
-- `logoutMiddleware(redirectTo)`: logout and redirect through Keycloak logout URL
-- `login(req, res, redirectTo)`: imperative login inside route handlers
-- `logout(req, res, redirectTo)`: imperative logout inside route handlers
-- `redirectToUserAccountConsole(res)`: redirect to Keycloak account console
-
-OIDC token endpoint helpers:
-
-- `generateAuthorizationUrl(options)`: creates authorization URL + PKCE challenge material
-- `loginWithCredentials(credentials)`: generic token endpoint call for OAuth2 grants
-- `loginPKCE(credentials)`: authorization-code + PKCE verifier exchange
-
-### Practical Method Selection Examples
-
-Use the method that best matches your route behavior and security requirement.
-
-```js
-// 1) Authentication-only route
-app.get('/private', keycloakInstance.protectMiddleware(), handler);
-
-// 2) Role-based route
-app.get('/admin', keycloakInstance.protectMiddleware('admin'), handler);
-
-// 3) Permission-based route (Authorization Services)
-app.get('/report', keycloakInstance.enforcerMiddleware('report-resource:view'), handler);
-
-// 4) Dynamic permission from URL params
-app.get('/resource/:perm', keycloakInstance.customEnforcerMiddleware((req) => req.params.perm), handler);
-```
-
-```js
-// 5) PKCE start (login initiation)
-const pkce = keycloakInstance.generateAuthorizationUrl({
-    redirect_uri: 'https://app.example.com/auth/callback'
-});
-
-req.session.pkce_state = pkce.state;
-req.session.pkce_verifier = pkce.codeVerifier;
-res.redirect(pkce.authUrl);
-```
-
-```js
-// 6) PKCE callback exchange
-const tokens = await keycloakInstance.loginPKCE({
-    code: req.query.code,
-    redirect_uri: 'https://app.example.com/auth/callback',
-    code_verifier: req.session.pkce_verifier
-});
-
-res.json({
-    tokenType: tokens.token_type,
-    expiresIn: tokens.expires_in
-});
-```
+- [Testing Environment and Scripts](docs/testing-environment.md)
+- [Testing Guide](docs/testing.md)
+- [Test Configuration](docs/test-configuration.md)
 
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License.
 
@@ -685,7 +672,7 @@ SOFTWARE.
 
 ---
 
-## 🙋‍♂️ Contributions
+## Contributions
 
 Contributions, issues and feature requests are welcome!
 
@@ -697,7 +684,7 @@ Contributions, issues and feature requests are welcome!
 
 ---
 
-## 👨‍💻 Maintainer
+## Maintainer
 
 Developed and maintained by [CRS4 Microservice Core Team ([cmc.smartenv@crs4.it](mailto:cmc.smartenv@crs4.it))] - feel free to reach out for questions or suggestions.
 
