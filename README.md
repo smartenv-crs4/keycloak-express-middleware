@@ -477,6 +477,17 @@ protectMiddleware(conditions)
 
 Protects routes through authentication and optional role-based authorization.
 
+**What this API is for**
+
+- Use this middleware when access rules are based on roles and you want authorization directly on route declaration.
+- It is the default choice for RBAC scenarios such as admin/user/editor segmentation.
+
+**When to prefer it**
+
+- You already model permissions as roles in Keycloak.
+- You do not need policy-based, resource-level authorization.
+- You want a simple, readable route contract (role required is visible in code).
+
 **Parameters**
 
 | Name | Type | Required | Description |
@@ -499,6 +510,14 @@ Protects routes through authentication and optional role-based authorization.
 - With `string` or `string[]`, access is granted if the token has at least one matching role.
 - With a predicate function, your function decides access synchronously using token/request context.
 - On deny, Keycloak returns unauthorized/forbidden response according to adapter configuration.
+
+**Internal flow in practice**
+
+1. Middleware checks whether a valid Keycloak authentication context exists.
+2. If no role constraint is provided, authentication is sufficient.
+3. If role constraints are present, token roles are evaluated.
+4. If conditions fail, request is terminated with auth error handling.
+5. If conditions pass, control goes to next handler.
 
 **Notes**
 
@@ -523,6 +542,16 @@ customProtectMiddleware(customFunction)
 ```
 
 Builds role expressions dynamically from request context.
+
+**What this API is for**
+
+- Use this middleware when the required role is request-dependent (for example URL params, tenant id, or feature partition).
+- It avoids hardcoding one static role for every route variant.
+
+**When to prefer it**
+
+- One route family maps to many role names.
+- The role expression can be derived synchronously from request data.
 
 **Parameters**
 
@@ -552,6 +581,16 @@ enforcerMiddleware(conditions, options)
 
 Performs permission checks via Keycloak Authorization Services (UMA 2.0).
 
+**What this API is for**
+
+- Use this middleware for fine-grained authorization where roles are not enough.
+- It is designed for resource/scope decisions evaluated by Keycloak policies.
+
+**When to prefer it**
+
+- Access depends on resource ownership, scopes, or dynamic claims.
+- You want authorization logic centralized in Keycloak Authorization Services.
+
 **Parameters**
 
 | Name | Type | Required | Description |
@@ -578,6 +617,13 @@ Performs permission checks via Keycloak Authorization Services (UMA 2.0).
 - With `response_mode: 'token'`, Keycloak issues token with authorization details in token claims.
 - With function conditions, callback decides allow/deny after async permission checks.
 
+**Internal flow in practice**
+
+1. Middleware resolves static permission expression(s) or executes custom async evaluator.
+2. Keycloak evaluates policies against token + resource context.
+3. Result is surfaced as allowed/denied (and optionally permissions payload/token mode).
+4. Request continues only if policy evaluation grants access.
+
 **Keycloak prerequisites**
 
 - Client must have Authorization enabled.
@@ -599,6 +645,16 @@ customEnforcerMiddleware(customFunction, options)
 ```
 
 Dynamic permission-check middleware that derives permission expressions from request context.
+
+**What this API is for**
+
+- Use this middleware when permission string must be generated per request (for example `resource:${id}:read`).
+- It combines dynamic request context with Keycloak Authorization Services evaluation.
+
+**When to prefer it**
+
+- Permission names are not static.
+- Resource identity comes from path/query/header data.
 
 **Parameters**
 
@@ -658,6 +714,11 @@ encodeTokenRole()
 
 Exposes decoded token-role helpers on the request object.
 
+**What this API is for**
+
+- Use this middleware when you want to read role information inside business logic without enforcing a role gate at middleware declaration time.
+- Useful for adaptive responses (for example enhanced payload for admins).
+
 **Returns**
 
 - Middleware return.
@@ -689,6 +750,11 @@ encodeTokenPermission()
 ```
 
 Adds permission-check helper utilities to the request object.
+
+**What this API is for**
+
+- Use this middleware when you need conditional permission checks inside handler code rather than strict upfront route blocking.
+- Useful when a single endpoint supports multiple authorization branches.
 
 **Returns**
 
@@ -726,6 +792,11 @@ loginMiddleware(redirectTo)
 
 Forces authentication and redirects authenticated users to destination.
 
+**What this API is for**
+
+- Use this middleware for routes that should behave as login entry points.
+- Typical example: `/signin` route that always triggers authentication then navigates user to app page.
+
 **Parameters**
 
 | Name | Type | Required | Description |
@@ -749,6 +820,11 @@ logoutMiddleware(redirectTo)
 ```
 
 Destroys local session and redirects through Keycloak logout endpoint when token is present.
+
+**What this API is for**
+
+- Use this middleware for clean logout endpoints that invalidate local session and, when possible, terminate Keycloak session.
+- Keeps logout behavior consistent and centralized in one middleware.
 
 **Parameters**
 
@@ -774,6 +850,11 @@ login(req, res, redirectTo)
 ```
 
 Imperative login helper intended for use inside route handlers.
+
+**What this API is for**
+
+- Use this function when login should happen conditionally inside handler logic.
+- Typical example: login only after validating custom preconditions.
 
 **Parameters**
 
@@ -804,6 +885,10 @@ logout(req, res, redirectTo)
 
 Imperative logout helper intended for use inside route handlers.
 
+**What this API is for**
+
+- Use this function when logout should be triggered after custom handler logic (audit logging, cleanup, conditional branching).
+
 **Parameters**
 
 | Name | Type | Required | Description |
@@ -825,6 +910,16 @@ generateAuthorizationUrl(options = {})
 ```
 
 Builds PKCE initialization values and authorization URL.
+
+**What this API is for**
+
+- Use this method to start a modern OAuth2 Authorization Code + PKCE flow.
+- It creates all artifacts needed to securely initiate login redirect.
+
+**Security relevance**
+
+- `state` protects against CSRF and response-mixup style attacks.
+- `codeVerifier` is the secret proof used in callback token exchange.
 
 **Parameters**
 
@@ -869,6 +964,18 @@ async loginWithCredentials(credentials = {})
 
 Generic OAuth2 token endpoint helper supporting multiple grant types.
 
+**What this API is for**
+
+- Use this method when your application needs direct programmatic token endpoint access.
+- It is the low-level token exchange utility used by higher-level flows as well.
+
+**Typical grants handled**
+
+- `password`
+- `client_credentials`
+- `authorization_code`
+- `refresh_token`
+
 **Parameters**
 
 | Name | Type | Required | Description |
@@ -901,6 +1008,16 @@ async loginPKCE(credentials = {})
 ```
 
 Performs authorization-code + PKCE verifier exchange.
+
+**What this API is for**
+
+- Use this method in callback endpoints after Keycloak redirects user back with authorization code.
+- It specializes token exchange for PKCE and validates required PKCE inputs.
+
+**Why it matters**
+
+- PKCE mitigates intercepted authorization code reuse by binding code to `code_verifier`.
+- This method encapsulates the correct grant payload shape for PKCE callback stage.
 
 **Parameters**
 
@@ -974,6 +1091,11 @@ redirectToUserAccountConsole(res)
 ```
 
 Redirects user to the Keycloak account console endpoint for the configured realm.
+
+**What this API is for**
+
+- Use this helper to provide a direct “Manage Account” navigation endpoint from your app.
+- It delegates profile/security management to Keycloak account console UI.
 
 **Parameters**
 
