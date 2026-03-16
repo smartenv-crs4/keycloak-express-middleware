@@ -15,19 +15,6 @@ If you are looking for API details or testing documentation, use these direct li
 - Testing guide: [docs/testing.md](docs/testing.md)
 - Full docs index: [docs/README.md](docs/README.md)
 
-## Documentation Structure (Reference-Style)
-
-This repository follows the same documentation structure used in the reference project:
-
-- Root README (this file): high-level overview, installation, and practical quick-start examples.
-- Docs index: [docs/README.md](docs/README.md) as the entry point for all technical documentation.
-- API documentation split by topic under [docs/api/](docs/api/) with centralized index [docs/api-reference.md](docs/api-reference.md).
-- Testing documentation separated into:
-    - environment/setup and scripts in [docs/testing-environment.md](docs/testing-environment.md)
-    - architecture and execution details in [docs/testing.md](docs/testing.md)
-
-This keeps the root README readable while preserving complete method-level and operational documentation in `docs/`.
-
 
 ---
 ## Features
