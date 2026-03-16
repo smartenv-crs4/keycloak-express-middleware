@@ -1,37 +1,62 @@
-# 🔐 Keycloak Express middleware for Node.js (Express)
-An adapter API to seamlessly integrate **Node.js Express** applications with **Keycloak** for authentication and authorization using **OpenID Connect (OIDC)**.
-This middleware provides route protection, token validation, user role management. Ideal for securing RESTful services, microservices, Express-based backends, and express or javascript frontends.
-it is based on **'keycloak-connect'**, and **'express-session'**
+# Keycloak Express Middleware for Node.js (Express)
+An adapter API to integrate **Node.js Express** applications with **Keycloak** for authentication and authorization using **OpenID Connect (OIDC)**.
+This middleware provides route protection, token validation, and user role management. It is ideal for securing RESTful services, microservices, Express-based backends, and JavaScript frontends.
+It is based on **'keycloak-connect'** and **'express-session'**.
+
+## Start Here: Main Documentation Links
+
+If you are looking for API details or testing documentation, use these direct links:
+
+- API docs (index): [docs/api-reference.md](docs/api-reference.md)
+- API configuration and initialization: [docs/api/configuration.md](docs/api/configuration.md)
+- API route protection: [docs/api/route-protection.md](docs/api/route-protection.md)
+- API OIDC helpers: [docs/api/oidc-token-endpoint.md](docs/api/oidc-token-endpoint.md)
+- Testing environment and scripts: [docs/testing-environment.md](docs/testing-environment.md)
+- Testing guide: [docs/testing.md](docs/testing.md)
+- Full docs index: [docs/README.md](docs/README.md)
+
+## Documentation Structure (Reference-Style)
+
+This repository follows the same documentation structure used in the reference project:
+
+- Root README (this file): high-level overview, installation, and practical quick-start examples.
+- Docs index: [docs/README.md](docs/README.md) as the entry point for all technical documentation.
+- API documentation split by topic under [docs/api/](docs/api/) with centralized index [docs/api-reference.md](docs/api-reference.md).
+- Testing documentation separated into:
+    - environment/setup and scripts in [docs/testing-environment.md](docs/testing-environment.md)
+    - architecture and execution details in [docs/testing.md](docs/testing.md)
+
+This keeps the root README readable while preserving complete method-level and operational documentation in `docs/`.
 
 
 ---
-## 📦 Features
-- 🔑 OIDC-based authentication with Keycloak
-- 🧾 Access token validation (JWT)
-- 🔐 Route protection via role-based access control
-- 🔁 Automatic token refresh (optional)
-- ⚙️ Configurable Keycloak client and realm settings
-- 👤 User info extraction from token
-- 🌍 CORS support and integration with frontend apps (SPA or mobile)
+## Features
+- OIDC-based authentication with Keycloak
+- Access token validation (JWT)
+- Route protection via role-based access control
+- Automatic token refresh (optional)
+- Configurable Keycloak client and realm settings
+- User info extraction from token
+- CORS support and integration with frontend apps (SPA or mobile)
 ---
-## ⚠️ keycloak-express-middleware evolution starting from Version 4.0.0
-The new version of keycloak-express-middleware introduces a substantial evolution in its architecture. 
+## Architecture Evolution Starting from v4.0.0
+Version 4 introduced a substantial architecture evolution.
 It now embraces an object-oriented paradigm, which means each instance of the middleware is self-contained and independent. 
 Concretely, you can instantiate the library multiple times within the same application—each time pointing to a different client in Keycloak 
 and the instances will not share internal connections or state across modules. 
-This is a major shift from the previous version(until 3.0.9), where the library maintained a single shared 
+This is a major shift from the previous version (up to 3.0.9), where the library maintained a single shared 
 connection and did not support using distinct Keycloak clients simultaneously within the same 
 application scope.  By moving to this new ***one instance = one client*** model, you gain the flexibility to support scenarios such as:
- - a single Express application acting as multiple Keycloak clients, each with different realms, client-ids or roles, 
- - isolating middleware logic per client without risking cross-contamination of sessions or grants, 
- - simplifying multitenancy or micro-service architectures where different parts of an app authenticate against different Keycloak clients. 
+ - a single Express application acting as multiple Keycloak clients, each with different realms, client IDs, or roles,
+ - isolating middleware logic per client without risking cross-contamination of sessions or grants,
+ - simplifying multi-tenancy or microservice architectures where different parts of an app authenticate against different Keycloak clients.
  
 **To summarize:** the new version (4.0.0+) enables multi-client usage within the same app by turning the middleware into configurable,
-independent object instances — something that the earlier version did not support.
+independent object instances, something that the earlier version did not support.
 
-### 🏗️ Migration Guide: From Old to New Version
+### Migration Guide: From Old to New Version
 
-🧩 Old Version (pre–object-oriented)
+Old Version (pre-object-oriented)
 ```js
 // OLD VERSION UP TO 3.0.9
 const express = require('express');
@@ -42,7 +67,7 @@ await keycloakAdapter.configure(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloakClientName",
+    "resource": "keycloakClientName",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -63,7 +88,7 @@ app.get('/privateStaticClientRole', keycloakAdapter.protectMiddleware("admin"), 
 });
 ```
 
-🆕 New Version (Object-Oriented Design) - Version 4.0.0+
+New Version (Object-Oriented Design) - Version 4.0.0+
 
 ```js
 // NEW VERSION STARTING FROM 4.0.0
@@ -77,7 +102,7 @@ const keycloakA = new keycloakAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloakClientName_A",
+    "resource": "keycloakClientName_A",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -93,7 +118,7 @@ const keycloakB = new keycloakAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloakClientName_B",
+    "resource": "keycloakClientName_B",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -120,7 +145,7 @@ app.listen(3000, () => console.log('Server running on port 3000'));
 ```
 
 ---
-## 🚀 Installation
+## Installation
 ```bash
 npm install keycloak-express-middleware
 ```
@@ -128,9 +153,35 @@ Or, if using Yarn:
 ```bash
 yarn add keycloak-express-middleware
 ```
+
+## Documentation Map
+
+All technical documentation is centralized under `docs/`.
+
+### API Reference
+
+- [API Reference (Index)](docs/api-reference.md)
+- [API - Configuration and Initialization](docs/api/configuration.md)
+- [API - Route Protection](docs/api/route-protection.md)
+- [API - Authorization Services](docs/api/authorization-services.md)
+- [API - Token Decode Helpers](docs/api/token-decode-helpers.md)
+- [API - OIDC Token Endpoint Helpers](docs/api/oidc-token-endpoint.md)
+- [API - Session and Navigation](docs/api/session-and-navigation.md)
+
+### General Documentation
+
+- [Architecture and Runtime](docs/architecture.md)
+- [Deployment Guide](docs/deployment.md)
+- [Keycloak Setup](docs/keycloak-setup.md)
+- [Test Configuration](docs/test-configuration.md)
+- [Testing Environment and Scripts](docs/testing-environment.md)
+- [Testing Guide](docs/testing.md)
+- [OIDC Integration Guide](docs/OIDC_INTEGRATION_GUIDE.md)
+- [Migration Status](docs/MIGRATION_STATUS.md)
+
 ---
-## 🛠️ Get Keycloak Configuration
-Copy or Download from keycloak admin page your client configuration `keycloak.json` by visiting 
+## Get Keycloak Configuration
+Copy or download your client configuration `keycloak.json` from the Keycloak admin page:
 the Keycloak Admin Console → clients (left sidebar) → choose your client → Installation → Format Option → Keycloak OIDC JSON → Download
 ```json
 {
@@ -145,7 +196,7 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 }
 ```
 ---
-## 📄 Usage Example
+## Quick Usage Example
 ```js
 const express = require('express');
 // CommonJS - Default import
@@ -165,7 +216,7 @@ const keycloakInstance = new keycloakAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloakClientName",
+    "resource": "keycloakClientName",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -208,7 +259,7 @@ app.get('/logout', (req, res) => {
 
 // Example of logout with keycloakInstance.logoutMiddleware middleware
 // After login redirect to "http://localhost:3001/home"
-app.get('/logoutMiddle', keycloakInstance.logoutMiddleware("http://redirctUrl"), (req, res) => {
+app.get('/logoutMiddle', keycloakInstance.logoutMiddleware("http://redirectUrl"), (req, res) => {
     // Response handled by middleware, this section will never be reached.
 });
 
@@ -315,7 +366,7 @@ let tmpFunctionEnforceValidation=function (token,req,callback) {
         }));
     }));
 }
-app.get('/adminOrViewerResorce', keycloakInstance.enforcerMiddleware(tmpFunctionEnforceValidation), (req, res) => {
+app.get('/adminOrViewerResource', keycloakInstance.enforcerMiddleware(tmpFunctionEnforceValidation), (req, res) => {
     // If this section is reached, the user has the required privileges 
     // driven by tmpFunctionEnforceValidation; otherwise, the middleware responds
     // with a 403 Access Denied.
@@ -372,7 +423,7 @@ a login or error page.
 > 🛈 Note: In a secure application, users should normally not reach protected routes without authentication.  
 > However, for simplicity or flexibility during development, this interception approach can be convenient.
 
-### Example 1 — Custom Access Denied Page
+### Example 1 - Custom Access Denied Page
 
 ```js
 const responseinterceptor = require('responseinterceptor');
@@ -432,7 +483,7 @@ app.get(
 );
 ```
 
-### Example 2 — Redirect to a Dedicated Page (Dynamic Redirect)
+### Example 2 - Redirect to a Dedicated Page (Dynamic Redirect)
 
 ```js
 function tmpInterceptorDinamic(req, respond) {
@@ -500,7 +551,7 @@ app.get(
 );
 ```
 
-### Example 3 — Static Redirect to a Route
+### Example 3 - Static Redirect to a Route
 
 ```js
 // If protectMiddleware('role') triggers a 403 (forbidden) and Keycloak returns
@@ -535,554 +586,91 @@ app.get(
 ---
 
 
-## 🧩 Configuration
-In your Express application:
-```js
-const keycloakAdapter = require('keycloak-express-middleware');
+## API Quick Links
 
-// Configure and Initialize Keycloak adapter
-const keycloakInstance = new keycloakAdapter(app,{
-        "realm": "Realm-Project",
-        "auth-server-url": "https://YourKeycloakUrl:30040/",
-        "ssl-required": "external",
-        "resource": "keycloakClientName",
-        "credentials": {
-            "secret": "aaaaaaaaaa"
-        },
-        "confidential-port": 0
-    },
-    {
-        session:{
-            secret: 'mySecretForSession',
-        }
-    })
-```
-`keycloak-express-middleware constructor` instantiates and configures the Keycloak 
-adapter for an Express application. It must be called at app startup, before defining any protected routes.
-The constructor is synchronous and returns the configured instance immediately.
+Detailed method-level API documentation lives under docs/api.
 
-**` -- @parameters -- `**
-- **app**: `[required]` Express application instance (e.g., const app = express();) or express router (e.g., var router = express.Router();)
-- **keycloakConfig:** `[required]`JSON object containing the Keycloak client configuration.  This can be obtained from the Keycloak admin console: Clients → [client name] → Installation → "Keycloak OIDC JSON" → Download. It accepts other parameter not defined in downloaded config like:
-  - "verifyTokenAudience": If verify-token-audience = true, the adapter rejects the token if its audience does not match the client that receives it.
-  - "bearerOnly": for public client. if it is set to true the client cannot call login services
-  Example:   
-```json
-         
-{
-    "realm": "realm-name",
-    "auth-server-url": "https://keycloak.example.com/",
-    "ssl-required": "external",
-    "resource": "client-name",
-    "credentials": { "secret": "secret-code" },
-    "confidential-port": 0
-}
-  
-```
-- **keycloakOptions**: `[required]` advanced configuration options for the adapter. Main supported options:
-  - **session:** Express session configuration (as in express-session)
-  - **scope:** authentication scopes (e.g., 'openid profile email offline_access') **Note:** to use offline_access, the client must have the option enabled and the user must have the offline_access role.
-  - **idpHint:** to suggest an identity provider to Keycloak during login
-  - **cookies:** to enable cookie handling
-  - **realmUrl:** to override the realm URL
+- [API Reference (Index)](docs/api-reference.md)
+- [Configuration and Initialization](docs/api/configuration.md)
+- [Route Protection](docs/api/route-protection.md)
+- [Authorization Services](docs/api/authorization-services.md)
+- [Token Decode Helpers](docs/api/token-decode-helpers.md)
+- [OIDC Token Endpoint Helpers](docs/api/oidc-token-endpoint.md)
+- [Session and Navigation](docs/api/session-and-navigation.md)
 
-### Import Alternatives
+### Extended API Overview
 
-While the examples use CommonJS (`require`), the library also supports ES6 module syntax:
+The following list helps you quickly identify which method to use, even before opening the detailed API pages.
+
+Route protection and authorization:
+
+- `protectMiddleware(conditions?)`: authentication check, plus optional role validation
+- `customProtectMiddleware(fn)`: dynamic role string based on request data
+- `enforcerMiddleware(conditions, options?)`: permission checks through Keycloak Authorization Services
+- `customEnforcerMiddleware(fn, options?)`: dynamic permission checks from request context
+
+Token helper middleware:
+
+- `encodeTokenRole()`: exposes token role helper on request
+- `encodeTokenPermission()`: exposes permission helper on request
+
+Session and navigation helpers:
+
+- `loginMiddleware(redirectTo)`: force login and redirect
+- `logoutMiddleware(redirectTo)`: logout and redirect through Keycloak logout URL
+- `login(req, res, redirectTo)`: imperative login inside route handlers
+- `logout(req, res, redirectTo)`: imperative logout inside route handlers
+- `redirectToUserAccountConsole(res)`: redirect to Keycloak account console
+
+OIDC token endpoint helpers:
+
+- `generateAuthorizationUrl(options)`: creates authorization URL + PKCE challenge material
+- `loginWithCredentials(credentials)`: generic token endpoint call for OAuth2 grants
+- `loginPKCE(credentials)`: authorization-code + PKCE verifier exchange
+
+### Practical Method Selection Examples
+
+Use the method that best matches your route behavior and security requirement.
 
 ```js
-// CommonJS (Default)
-const keycloakAdapter = require('keycloak-express-middleware');
+// 1) Authentication-only route
+app.get('/private', keycloakInstance.protectMiddleware(), handler);
 
-// ES6 - Named import (recommended for clarity)
-import { keycloackAdapter as keycloakAdapter } from 'keycloak-express-middleware';
+// 2) Role-based route
+app.get('/admin', keycloakInstance.protectMiddleware('admin'), handler);
 
-// ES6 - Default import
-import keycloakAdapter from 'keycloak-express-middleware';
-```
+// 3) Permission-based route (Authorization Services)
+app.get('/report', keycloakInstance.enforcerMiddleware('report-resource:view'), handler);
 
----
-## 🔧 Available Middlewares
-### `protectMiddleware([conditions])`
-Middleware to protect Express routes based on authentication and, optionally, authorization via Keycloak roles. 
-Allows restricting access to a resource only to authenticated users or to those possessing specific roles in the realm or in a Keycloak client.
-
-**` -- @parameters -- `**
-- **conditions**: `[optional]` A String specifing one role, or an array of strings each specifying one or more required roles; or a function executing custom code performing an access role verification 
-  - As a string: specifies one required role, using the syntax:
-    - 'role'              → client role in the configured client (e.g., 'admin')
-    - 'clientid:role'     → client role of a specific client (e.g., 'myclient:editor')
-    - 'realm:role'        → realm role (e.g., 'realm:superuser')
-  - As array of strings: specifies one or more required roles, using the syntax: 
-    - 'role'              → client role in the configured client (e.g., 'admin')
-    - 'clientid:role'     → client role of a specific client (e.g., 'myclient:editor')
-    - 'realm:role'        → realm role (e.g., 'realm:superuser')
-  - As a function: receives (token, req) and must return true or false synchronously. This function enables custom authorization logic. The `token` object passed to the authorization function exposes methods such as:
-    - token.hasRole('admin')               // client role in configured client
-    - token.hasRole('realm:superuser')     // realm role
-    - token.hasRealmRole('superuser)       // realm role like token.hasRole('realm:superuser')
-    - token.hasRole('my-client:editor')    // client role of a specific client
-    - token.hasResourceRole('editor', 'my-client-id') // equivalent to hasRole('my-client:editor')
-    The authorization function must be synchronous and return true (allow access) or false (deny access).
-
-**` -- @returns -- `**  It return a function as an Express middleware to protect the route.
-
-✅ Usage example:
-```js
-
-// Authentication only, no role check
-app.get('/admin', keycloakAdapter.protectMiddleware(), (req, res) => {
-    res.send('Only authenticated users can see this resource.');
-});
-
-// Check on client role of configured client (e.g., 'admin')
-app.get('/admin', keycloakAdapter.protectMiddleware('admin'), (req, res) => {
-    res.send('Only users with the admin client role can access.');
-});
-
-// Check on role of a specific client (e.g., client 'clientid', role 'admin')
-app.get('/admin', keycloakAdapter.protectMiddleware('clientid:admin'), (req, res) => {
-    res.send('Only users with admin role in client "clientid" can access.');
-});
-
-// Check on realm role (e.g., 'superuser' role at realm level)
-app.get('/admin', keycloakAdapter.protectMiddleware('realm:superuser'), (req, res) => {
-    res.send('Only users with realm superuser role can access.');
-});
-
-// Custom synchronous authorization function
-app.get('/custom', keycloakAdapter.protectMiddleware((token, req) => {
-    // Allow only if user has realm role 'editor'
-    // and the request has a specific custom header
-    return token.hasRealmRole('editor') && req.headers['x-custom-header'] === 'OK';
-}), (req, res) => {
-    res.send('Access granted by custom authorization function.');
-});
-```
----
-### `customProtectMiddleware(fn)`
-Middleware similar to `protectMiddleware` but with dynamic role checking via a function.
-Unlike `protectMiddleware`, which accepts a string expressing the role or a control function
-that works on the token, this middleware accepts a function that receives the Express
-request and response objects `req` and `res` and must return a string representing the role control string.
-
-This is useful for parametric resources where the role control string must be dynamically generated based on the request,
-for example, based on URL parameters or query strings.
-
-**Note:** this function **does not** access or parse the token, nor performs any checks other than the role,
-so it cannot be used for complex logic depending on request properties other than the role (e.g., client IP, custom headers, etc.).
-The function's sole task is to generate the role control string.
-
-**` -- @parameters -- `**
-- **fn:** `[required]` Custom function that receives (req, res) and returns a string with the role control string to pass to Keycloak.
-
-✅ Usage example:
-```js
-
-app.get('/custom/:id', keycloakAdapter.customProtectMiddleware((req) => {
-    // Dynamically builds the client role based on URL parameter 'id'
-    return `clientRole${req.params.id}`;
-}), (req, res) => {
-    res.send(`Access granted to users with role 'clientRole${req.params.id}'`);
-});
-```
----
-### `enforcerMiddleware(conditions, options)`
-`enforcerMiddleware` is a middleware to enable permission checks based on resources and policies
-defined in Keycloak Authorization Services (UMA 2.0-based).
-
-Unlike `protectMiddleware` and similar, which only verify authentication or roles,
-`enforcerMiddleware` allows checking if the user has permission to access
-a specific protected resource through flexible and dynamic policies.
-
-Useful in contexts where resources are registered in Keycloak (such as documents, instances, dynamic entities) and
-protected by flexible policies.
-
-**` -- @parameters -- `**
-- **conditions:** a check control string or function
-  - ***As a string or array of strings:*** contain the name of the resource or permission to check. String Examples:
-    - ui-admin-resource: Apply the policies associated to the `ui-admin-resource` resource 
-    - ui-admin-resource:write: Apply the policies associateo to `ui-admin-resource`resource and `write` scope
-  - ***as a function:*** custom check function with signature:
-    ***`function(token, req, callback)`***
-      - token: decoded Keycloak token
-      - req: Express request
-      - callback(boolean): invoke with true if authorized, false otherwise 
-- **options:**: parameter provided as a JSON object that accepts the following filter:
-  - response_mode: 'permissions' (default) or 'token'
-  - claims: object with claim info for dynamic policies (e.g. owner id matching)
-  - resource_server_id: resource client id (default: current client)
-
---- How it works ---
-- If conditions is a function, it is used for custom checks with callback.
-- If conditions is a string, `keycloak.enforcer(conditions, options)` is used for the check.
-
---- response_mode modes ---
-1) 'permissions' (default)
-    - Keycloak returns the list of granted permissions (no new token)
-    - Permissions available in `req.permissions`
-
-2) 'token'
-    - Keycloak issues a new access token containing the granted permissions
-    - Permissions available in `req.kauth.grant.access_token.content.authorization.permissions`
-    - Useful for apps with sessions and decision caching
-
---- Keycloak requirements ---
-
-The client must have:
-- Authorization Enabled = ON
-- Policy Enforcement Mode = Enforcing
-- Add permissions to access token = ON
-
-You must also configure in Keycloak:
-- Resources
-- Policies (e.g., role, owner, JS script)
-- Permissions (associate policies to resources)
-
-✅ Usage example:
-```js
-
-// Check with static string
-app.get('/onlyAdminroute', keycloakAdapter.enforcerMiddleware('ui-admin-resource'), (req, res) => {
-    res.send('You are an authorized admin for this resource');
-});
-
-app.get('/onlyAdminrouteByScope', keycloakAdapter.enforcerMiddleware('ui-admin-resource:write'), (req, res) => {
-    res.send('You are an authorized admin for this resource');
-});
-
-// Check with custom function (async with callback)
-app.get('/onlyAdminrouteByfunction', keycloakAdapter.enforcerMiddleware(function(token, req, callback) {
-    token.hasPermission('ui-admin-resource', function(permission) {
-        if (permission) callback(true);
-        else {
-            token.hasPermission('ui-viewer-resource', function(permission) {
-                callback(permission ? true : false);
-            });
-        }
-    });
-}), (req, res) => {
-    res.send('You are an authorized admin or viewer (custom check)');
-});
-```
----
-### `customEnforcerMiddleware(fn, options)`
-`customEnforcerMiddleware` is a middleware for permission checks based on resources and policies
-defined in Keycloak Authorization Services (UMA 2.0), using dynamic permission strings.
-
-This middleware is similar to `enforcerMiddleware`, but takes a function
-`customFunction(req, res)` as a parameter, which must dynamically return
-the permission/resource string to be checked.
-
-**` -- @parameters -- `**
-- **fn:**`[required]` custom function that receives `req` and `res` and returns the control string for Keycloak.
-    As example:
-    ```js
-    function customFunction(req, res) {
-        // Your function logic
-        return req.params.permission;
-    }
-    ```
-
-- **options:** `[optional]` Additional options passed to `keycloak.enforcer()`, including:
-  - **response_mode:** 'permissions' (default) or 'token'
-  - **claims:** object with claim info for dynamic policies (e.g., owner ID)
-  - **resource_server_id:** string representing the resource client ID (default: current client)
-
---- response_mode options ---
-1) 'permissions' (default)
-    - The server returns only the list of granted permissions (no new token)
-    - Permissions available in `req.permissions`
-
-2) 'token'
-    - The server issues a new access token with granted permissions
-    - Permissions available in `req.kauth.grant.access_token.content.authorization.permissions`
-    - Useful for decision caching, session handling, automatic token refresh
-
---- Keycloak Requirements ---
-
-The client must be configured with:
-- Authorization Enabled = ON
-- Policy Enforcement Mode = Enforcing
-- Add permissions to access token = ON
-
-You must also have created:
-- Resources
-- Policies (e.g., role, owner, JS rules)
-- Permissions (linking policies to resources)
-
-✅ Usage example:
-```js
-
-const tmpFunctionEnforce = function(req, res) {
-    return req.params.permission; // dynamic permission from URL parameter
-};
-
-app.get('/onlyAdminrouteByfunction/:permission', keycloakAdapter.customEnforcerMiddleware(tmpFunctionEnforce), (req, res) => {
-    console.log("token permissions:", req.permissions);    
-    res.send('You are an authorized user with dynamic permission: ' + req.params.permission);
-});
-
-```
----
-### `encodeTokenRole()`
-`encodeTokenRole` is a middleware that decodes the Keycloak token and adds it
-to the Express request as `req.encodedTokenRole`.
-
-Unlike `protectMiddleware` or `customProtectMiddleware`, this middleware
-does NOT perform any role or authentication checks, but simply extracts
-and makes the decoded token available within the route handler function.
-
-It is especially useful when you want to perform custom logic based on roles
-or other information contained in the token directly in the route handler,
-for example showing different content based on role.
-
---- Contents of `req.encodedTokenRole` ---
-
-Represents the decoded Keycloak token and exposes several useful methods such as:
-- token.hasRole('admin')             // true/false if it has client role "admin"
-- token.hasRole('realm:superuser')   // true/false if it has realm role "superuser"
-- token.hasRealmRole('superuser)     // realm role like token.hasRole('realm:superuser')
-- token.hasRole('my-client:editor')  // true/false if it has client role "editor" for client "my-client"
-- token.hasResourceRole('editor', 'my-client-id') // identical to hasRole('my-client:editor')
-
-✅ Usage example:
-```js
-
-app.get('/encodeToken', keycloakAdapter.encodeTokenRole(), (req, res) => {
-    if (req.encodedTokenRole.hasRole('realm:admin')) {
-        res.send("User with admin (realm) role in encodeToken");
-    } else {
-        res.send("Regular user in encodeToken");
-    }
-});
-
-```
----
-### `encodeTokenPermission()`
-`encodeTokenPermission` ia s Middleware whose sole purpose is to decode the access token present in the request
-and add to the `req` object a property called `encodedTokenPermission` containing the token's permissions.
-
-Unlike `enforcerMiddleware` and `customEnforcerMiddleware`, it **does not perform any access**
-or authorization checks, but exposes a useful method (`hasPermission`) for checking permissions
-within the route handler.
-
-It is particularly useful when:
-- you want to **customize the response** based on the user's permissions (e.g., show a different page),
-- you want to **manually handle access** or perform custom checks on multiple permissions,
-- you do not want to block access upfront but decide dynamically within the route handler.
-
---- Additions to `req` ---
-
-After applying the middleware, `req` contains the property **`encodedTokenPermission`** as an object exposing the method:
-- hasPermission(permission: string, callback: function(boolean)) :Checks whether the token contains the specified permission. The callback receives `true` if the permission is present, `false` otherwise.
-
-✅ Usage example:
-```js
-
-app.get('/encodeTokenPermission',
-    keycloakAdapter.encodeTokenPermission(),
-    (req, res) => {
-        req.encodedTokenPermission.hasPermission('ui-admin-resource', function(perm) {
-            if (perm)
-                res.send('You are an authorized admin user by function permission parameters');
-            else
-                res.status(403).send('Access Denied by encodeTokenPermission');
-        });
-    });
-
-```
----
-### `loginMiddleware(redirectTo)`
-`loginMiddleware` is a Middleware used to **force user authentication** via Keycloak.
-
-It is particularly useful when you want to: 
-- ensure the user is authenticated,
-- redirect the user to a specific page after login or when access is denied,
-- integrate automatic login flows on routes that don’t require direct authorization,
-    but where login should still be enforced (e.g., profile page, personal area, etc.).
-
---- Behavior ---
-1. If the user is **not authenticated**, Keycloak redirects them to the login flow.
-2. If authentication fails or is denied, the user is redirected according to Keycloak's configured settings.
-3. If authentication is successful, the user is redirected to 'redirectTo' (usually `/home`, `/dashboard`, etc.).
-
-**` -- @parameters -- `**
-- **redirectTo**: `[required]` URL to redirect the user to after login.
-
---- Warning ---
-
-The route handler callback is **never executed**, because the middleware will respond earlier
-with a redirect or block the request.
-
-✅ Usage example:
-```js
-
-app.get('/loginMiddleware', keycloakAdapter.loginMiddleware("/home"), (req, res) => {
-        // This section is never reached
-        res.send("If you see this message, something went wrong.");
-});
-
-```
----
-### `logoutMiddleware(redirectTo)`
-`logoutMiddleware` Middleware is used to **force user logout**, removing the local session
-and redirecting the user to Keycloak's logout endpoint according to its configuration.
-
-It is useful when:
-- You want to completely log out the user,
-- You want to **terminate the session on Keycloak** (not just locally),
-- You want to redirect the user to a public page, such as a homepage, after logout.
-
---- Behavior ---
-1. Retrieves the `id_token` of the authenticated user.
-2. Constructs the Keycloak logout URL including the token and the redirect URL.
-3. **Destroys the local Express session** (e.g., cookies, user data).
-4. Redirects the user to the Keycloak logout URL, which in turn redirects to the provided URL.
-
-**` -- @parameters -- `**
-- **redirectTo**: `[required]` URL to which the user will be redirected after complete logout.
-
-✅ Usage example:
-```js
-
-app.get('/logoutMiddleware', keycloakAdapter.logoutMiddleware("http://localhost:3001/home"),  (req, res) => {
-        // This section is never reached
-        // The middleware handles logout and redirection automatically
-    });
-
-```
---- Note ---
-- The middleware **never executes the route callback**, as it fully handles the response.
-- The `redirectTo` parameter must match a **valid redirect URI** configured in Keycloak for the client.
-
---- Requirements ---
-- The Keycloak client must have properly configured `Valid Redirect URIs`.
-- The Express session must be active (e.g., `express-session` properly initialized).
-
-
-## 🔧 Available Functions
-### `login(req, res, redirectTo)`
-`login` Function not a middleware, but a **classic synchronous function** that forces user authentication
-via Keycloak and, if the user is not authenticated, redirects them to the login page.
-After successful login, the user is redirected to the URL specified in the `redirectTo` parameter.
-
---- Differences from `loginMiddleware` ---
-- `loginMiddleware` handles everything automatically **before** the route handler function.
-- `login` instead is a function **that can be manually called inside the route handler**,
-  offering **greater control** over when and how login is enforced.
-
-**` -- @parameters -- `**
-- **req:** `[required]` Express `Request` object
-- **res:** `[required]` Express `Response` object
-- **redirectTo:** `[required]` URL to redirect the user to after successful login
-
---- Behavior ---
-1. Attempts to protect the request using `protectMiddleware()`.
-2. If the user **is authenticated**, it performs `res.redirect(redirectTo)`.
-3. If **not authenticated**, Keycloak automatically handles redirection to the login page.
-
-✅ Usage example:
-```js
-
-app.get('/login', (req, res) => {
-    // Your route logic
-    // ...
-    // Force authentication if necessary
-    keycloakAdapter.login(req, res, "/home");
-});
-
-```
-
---- Notes ---
-- The function can be called **within an Express route**, allowing for custom conditional logic.
-- Useful for scenarios where only certain conditions should trigger a login.
-
---- Requirements ---
-- `Valid Redirect URIs` must include the URL passed to `redirectTo`.
----
-### `logout(req, res, redirectTo)`
-`logout` Function is not a middleware, but a **classic synchronous function** that forces the user to logout
-via Keycloak. In addition to terminating the current session (if any), it generates the Keycloak
-logout URL and redirects the user's browser to that address.
-
---- Differences from `logoutMiddleware` ---
-- `logoutMiddleware` is designed to be used directly as middleware in the route definition.
-- `logout` instead is a function **to be called inside the route**, useful for handling logout
-  **conditionally** or within more complex logic.
-
-**` -- @parameters -- `**
-- **req:** `[required]` Express `Request` object
-- **res:** `[required]` Express `Response` object
-- **redirectTo:** `[required]` URL to redirect the user to after successful logout
-
-
---- Behavior ---
-1. Retrieves the `id_token` from the current user's Keycloak token (if present).
-2. Builds the logout URL using `keycloak.logoutUrl()`.
-3. Destroys the user's Express session.
-4. Redirects the user to the Keycloak logout URL, which in turn redirects to `redirectTo`.
-
-✅ Usage example:
-```js
-
-app.get('/logout', (req, res) => {
-    // Any custom logic before logout
-    // ...
-    keycloakAdapter.logout(req, res, "http://localhost:3001/home");
-});
-
-```
-
---- Requirements ---
-- The user must be authenticated with Keycloak and have a valid token in `req.kauth.grant`.
-- The URL specified in `redirectTo` must be present in the `Valid Redirect URIs` in the Keycloak client.
-
----
-
-### `redirectToUserAccountConsole(res)`
-`redirectToUserAccountConsole` Function is not a middleware, but a **classic synchronous function** that redirect
-the users to keycloak Admin console where they can view and manage their personal profile and account settings.
-
-**` -- @parameters -- `**
-- **res:** `[required]` Express `Response` object
-
-
-
---- Design suggestions ---
-The most common and simplest solution:
-On your app’s page, add a custom link that opens a new tab directing the user to their personal account management page. 
-This way, the app page remains open, and the user can easily return to it after navigating to the tab or window containing their personal account.
-
-Example:
-Suppose that https://auth.example.com/user/account is the endpoint used by the redirectToUserAccountConsole function
-here’s a possible example:
-✅ Usage example:
-```html
-<a href="https://auth.example.com/user/account/console" target="_blank">
-  Manage my profile
-</a>
+// 4) Dynamic permission from URL params
+app.get('/resource/:perm', keycloakInstance.customEnforcerMiddleware((req) => req.params.perm), handler);
 ```
 
 ```js
-
-app.get('/user/account/console', (req, res) => {
-    // Any custom logic before logout
-    keycloakAdapter.redirectToUserAccountConsole(res);
+// 5) PKCE start (login initiation)
+const pkce = keycloakInstance.generateAuthorizationUrl({
+    redirect_uri: 'https://app.example.com/auth/callback'
 });
 
+req.session.pkce_state = pkce.state;
+req.session.pkce_verifier = pkce.codeVerifier;
+res.redirect(pkce.authUrl);
 ```
 
-The user opens the account console in a new tab, uses it, and then manually returns to your app.
-✅ Simple, no special configuration required.
+```js
+// 6) PKCE callback exchange
+const tokens = await keycloakInstance.loginPKCE({
+    code: req.query.code,
+    redirect_uri: 'https://app.example.com/auth/callback',
+    code_verifier: req.session.pkce_verifier
+});
 
----
+res.json({
+    tokenType: tokens.token_type,
+    expiresIn: tokens.expires_in
+});
+```
 
---- Requirements ---
-- The user must be authenticated with Keycloak and have a valid token in `req.kauth.grant`.
-- The URL specified in `redirectTo` must be present in the `Valid Redirect URIs` in the Keycloak client.
-
----
 
 ## 📝 License
 
@@ -1124,7 +712,7 @@ Contributions, issues and feature requests are welcome!
 
 ## 👨‍💻 Maintainer
 
-Developed and maintained by [CRS4 Microservice Core Team ([cmc.smartenv@crs4.it](mailto:cmc.smartenv@crs4.it))] – feel free to reach out for questions or suggestions.
+Developed and maintained by [CRS4 Microservice Core Team ([cmc.smartenv@crs4.it](mailto:cmc.smartenv@crs4.it))] - feel free to reach out for questions or suggestions.
 
 Design and development
 ------
