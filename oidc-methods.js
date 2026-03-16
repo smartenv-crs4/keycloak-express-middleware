@@ -3,15 +3,15 @@
  * 
  * These methods provide OAuth2 OIDC token endpoint helpers:
  * - generateAuthorizationUrl(): Generate PKCE authorization URL
- * - login(): Exchange credentials for tokens (generic OIDC grant)
+ * - loginWithCredentials(): Exchange credentials for tokens (generic OIDC grant)
  * - loginPKCE(): Exchange authorization code for tokens (PKCE flow)
  * 
  * Integration Instructions:
  * 1. Copy these methods into the keycloakExpressMiddleware class in index.js
- * 2. In the constructor, save the keyCloakConfig:
- *    this.keyCloakConfig = keyCloackConfig;
- *    this.clientId = keyCloackConfig.resource || keyCloackOptions.clientId;
- *    this.clientSecret = keyCloackConfig.credentials?.secret || keyCloackOptions.clientSecret;
+ * 2. In the constructor, save the keycloakConfig:
+ *    this.keycloakConfig = keycloakConfig;
+ *    this.clientId = keycloakConfig.resource || keycloakOptions.clientId;
+ *    this.clientSecret = keycloakConfig.credentials?.secret || keycloakOptions.clientSecret;
  * 3. Run tests to verify: npm test
  * 4. No external dependencies needed (crypto is built-in, fetch is global in Node 18+)
  */
@@ -245,7 +245,7 @@ async function loginWithCredentials(credentials = {}) {
  * @param {string} [credentials.clientSecret] - CamelCase alias of client_secret
  * @param {string} [credentials.scope] - Additional scope string
  * 
- * @returns {Promise<Object>} Token response from Keycloak (same as login())
+ * @returns {Promise<Object>} Token response from Keycloak (same as loginWithCredentials())
  * 
  * @throws {Error} If any required parameter is missing or token exchange fails
  * 

@@ -1,6 +1,6 @@
 # Test Configuration
 
-> ⚠️ **Attenzione:** Il file `test/config/secrets.json` contiene tutte le password e i segreti sensibili (adminPassword, testPassword, clientSecret, ecc). NON va mai committato! Usa `secrets.json.example` come template e personalizza solo in locale.
+> ⚠️ **Warning:** The file `test/config/secrets.json` contains sensitive passwords and secrets (adminPassword, testPassword, clientSecret, etc.). Never commit it. Use `secrets.json.example` as a template and customize it locally.
 
 Test configuration for keycloak-express-middleware is managed through `propertiesmanager` with environment-based layering.
 
@@ -28,7 +28,7 @@ Files are loaded in order of specificity. Later files override earlier ones:
    - Template for secrets.json
    - Edit and copy as secrets.json locally
 
-3. **test/config/secrets.json** ⚠️ Git-ignored (sensitive, locale!)
+3. **test/config/secrets.json** ⚠️ Git-ignored (sensitive, local!)
    - Passwords, API keys, tokens, testPassword, adminPassword, clientSecret
    - Machine-specific or environment-specific secrets
    - Create locally if needed (never commit!)

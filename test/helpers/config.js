@@ -14,11 +14,11 @@ const pm = pmModule.conf;
 // Export Keycloak test configuration
 module.exports = {
   getKeycloakConfig() {
-    // Restituisce tutto il blocco keycloak dalla configurazione attiva
+    // Return the whole keycloak block from the active configuration
     if (pm && pm.keycloak) {
       return pm.keycloak;
     }
-    // fallback minimale
+    // Minimal fallback
     return {
       baseUrl: 'http://localhost:8080',
       realm: 'test-realm',

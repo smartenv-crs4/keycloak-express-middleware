@@ -13,7 +13,7 @@ This guide describes the Keycloak server setup required for testing keycloak-exp
 The test suite validates OIDC flows and expects standard OAuth2/OIDC compliance. No special feature flags are strictly required, but standard features should be enabled:
 
 ```bash
-# Default (inclued in Keycloak 26+, recommended for all versions)
+# Default (included in Keycloak 26+, recommended for all versions)
 --features=admin-fine-grained-authz:v1,client-policies
 ```
 

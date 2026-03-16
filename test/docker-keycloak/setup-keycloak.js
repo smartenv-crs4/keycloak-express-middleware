@@ -394,7 +394,7 @@ async function deployRemote(host, deployPath, useHttps) {
   const dockerComposePath = path.join(dockerComposeDir, 'docker-compose.yml');
   const dockerComposeHttpsPath = path.join(dockerComposeDir, 'docker-compose-https.yml');
   const hostname = host.includes('@') ? host.split('@')[1] : host;
-  // Genera .env locale (come keycloak-api-manager)
+  // Generate local .env file (same approach as keycloak-api-manager)
   const envContent = `KEYCLOAK_CERT_PATH=./certs\nKEYCLOAK_HOSTNAME=${hostname}\n`;
   fs.writeFileSync(path.join(dockerComposeDir, '.env'), envContent);
   try {

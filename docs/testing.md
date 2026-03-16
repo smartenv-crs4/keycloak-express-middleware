@@ -2,6 +2,8 @@
 
 The test suite for keycloak-express-middleware validates OIDC implementation against a real Keycloak server.
 
+For environment creation, dependency installation, and script catalog, start from [Testing Environment and Scripts](testing-environment.md).
+
 ## Test Architecture
 
 ### Design Philosophy
@@ -38,12 +40,12 @@ test/
 npm test
 
 # What happens:
-# 1. Installs test dependencies: npm --prefix test install
-# 2. Runs Mocha with NODE_ENV=test: NODE_ENV=test mocha --require support/setup.js --exit
-# 3. Global setup runs before tests
-# 4. Attempts to initialize Keycloak realm/client (if available)
-# 5. Runs all *.test.js files
-# 6. Cleans up after tests
+# 1. Runs test/helpers/keycloak-setup.js with NODE_ENV=test
+# 2. Installs test dependencies: npm --prefix test install
+# 3. Runs test workspace script: npm --prefix test test
+# 4. Loads global setup hooks from test/support/setup.js
+# 5. Attempts to initialize Keycloak realm/client (if available)
+# 6. Runs all *.test.js files
 ```
 
 ### Running Specific Tests

@@ -1,6 +1,6 @@
 # Integration Guide: Adding OIDC Methods to keycloak-express-middleware
 
-This guide explains how to integrate the new OIDC authentication methods (`generateAuthorizationUrl()`, `login()`, `loginPKCE()`) into the `keycloak-express-middleware` class.
+This guide explains how to integrate the OIDC authentication methods (`generateAuthorizationUrl()`, `loginWithCredentials()`, `loginPKCE()`) into the `keycloak-express-middleware` class.
 
 ## Files Created
 
@@ -22,12 +22,12 @@ Expected output: All tests should pass (20+ assertions)
 Find the `keycloakExpressMiddleware` constructor:
 
 ```javascript
-constructor(app, keyCloackConfig, keyCloackOptions) {
+constructor(app, keycloakConfig, keycloakOptions) {
     this.keycloak = null;
     this.ready = false;
     this.readyQueue = [];
-    this.realmName = keyCloackConfig.realm || keyCloackOptions.realmName;
-    this.authServerUrl = keyCloackConfig['auth-server-url'];
+    this.realmName = keycloakConfig.realm || keycloakOptions.realmName;
+    this.authServerUrl = keycloakConfig['auth-server-url'];
     // ... rest of constructor
 }
 ```
@@ -38,23 +38,23 @@ Add these lines after `this.authServerUrl`:
 
 ```javascript
 // Store OIDC configuration for token endpoint helpers
-this.clientId = keyCloackConfig.resource || keyCloackOptions.clientId;
-this.clientSecret = keyCloackConfig.credentials?.secret || keyCloackOptions.clientSecret;
+this.clientId = keycloakConfig.resource || keycloakOptions.clientId;
+this.clientSecret = keycloakConfig.credentials?.secret || keycloakOptions.clientSecret;
 ```
 
 **Full example:**
 
 ```javascript
-constructor(app, keyCloackConfig, keyCloackOptions) {
+constructor(app, keycloakConfig, keycloakOptions) {
     this.keycloak = null;
     this.ready = false;
     this.readyQueue = [];
-    this.realmName = keyCloackConfig.realm || keyCloackOptions.realmName;
-    this.authServerUrl = keyCloackConfig['auth-server-url'];
+    this.realmName = keycloakConfig.realm || keycloakOptions.realmName;
+    this.authServerUrl = keycloakConfig['auth-server-url'];
     
     // NEW: Store OIDC configuration
-    this.clientId = keyCloackConfig.resource || keyCloackOptions.clientId;
-    this.clientSecret = keyCloackConfig.credentials?.secret || keyCloackOptions.clientSecret;
+    this.clientId = keycloakConfig.resource || keycloakOptions.clientId;
+    this.clientSecret = keycloakConfig.credentials?.secret || keycloakOptions.clientSecret;
     
     // ... rest of constructor (unchanged)
 }
@@ -79,7 +79,7 @@ At the end of the `keycloakExpressMiddleware` class (before the closing brace), 
      * Exchange credentials for OIDC tokens (generic token endpoint)
      * See oidc-methods.js for full documentation
      */
-    async login(credentials = {}) {
+    async loginWithCredentials(credentials = {}) {
         // ... copy from oidc-methods.js
     }
 
@@ -104,9 +104,9 @@ npm test
 
 Verify that all tests pass with the new methods integrated.
 
-### Step 6: Test in Your Application
+### Step 6: Validate in Your Application
 
-Create a simple test to verify the middleware works:
+Use a minimal runtime check to validate middleware wiring and PKCE URL generation:
 
 ```javascript
 const keycloakAdapter = require('keycloak-express-middleware');
@@ -114,19 +114,24 @@ const express = require('express');
 
 const app = express();
 
-// Configure middleware
-await keycloakAdapter.configure({
+// Instantiate middleware
+const keycloakInstance = new keycloakAdapter(
   app,
-  keyCloakConfig: {
+  {
     realm: 'my-realm',
     'auth-server-url': 'https://keycloak.example.com/',
     resource: 'my-client',
     credentials: { secret: 'my-secret' }
+  },
+  {
+    session: {
+      secret: 'change-me'
+    }
   }
-});
+);
 
 // Test PKCE flow initialization
-const pkceFlow = keycloakAdapter.generateAuthorizationUrl({
+const pkceFlow = keycloakInstance.generateAuthorizationUrl({
   redirect_uri: 'http://localhost:3000/auth/callback'
 });
 
@@ -146,10 +151,10 @@ const pkceFlow = keycloakAdapter.generateAuthorizationUrl({
 
 ### 3. Configuration Sources
 The three methods use these configuration values from the middleware:
-- `this.authServerUrl` - From `keyCloakConfig['auth-server-url']`
-- `this.realmName` - From `keyCloakConfig.realm`
-- `this.clientId` - From `keyCloakConfig.resource` (or `keyCloackOptions.clientId`)
-- `this.clientSecret` - From `keyCloakConfig.credentials.secret` (or `keyCloackOptions.clientSecret`)
+- `this.authServerUrl` - From `keycloakConfig['auth-server-url']`
+- `this.realmName` - From `keycloakConfig.realm`
+- `this.clientId` - From `keycloakConfig.resource` (or `keycloakOptions.clientId`)
+- `this.clientSecret` - From `keycloakConfig.credentials.secret` (or `keycloakOptions.clientSecret`)
 
 ### 4. Usage Examples
 
@@ -184,19 +189,19 @@ res.redirect('/dashboard');
 
 ```javascript
 // Password grant
-const tokens = await keycloakAdapter.login({
+const tokens = await keycloakAdapter.loginWithCredentials({
   grant_type: 'password',
   username: 'user@example.com',
   password: 'password123'
 });
 
 // Client credentials
-const tokens = await keycloakAdapter.login({
+const tokens = await keycloakAdapter.loginWithCredentials({
   grant_type: 'client_credentials'
 });
 
 // Refresh token
-const newTokens = await keycloakAdapter.login({
+const newTokens = await keycloakAdapter.loginWithCredentials({
   grant_type: 'refresh_token',
   refresh_token: oldRefreshToken
 });
@@ -208,7 +213,7 @@ const newTokens = await keycloakAdapter.login({
 - [ ] Constructor saves `clientId` and `clientSecret`
 - [ ] Three methods added to the class
 - [ ] `generateAuthorizationUrl()` works
-- [ ] `login()` works
+- [ ] `loginWithCredentials()` works
 - [ ] `loginPKCE()` works
 - [ ] Existing middleware functionality still works
 - [ ] No runtime errors
@@ -216,7 +221,7 @@ const newTokens = await keycloakAdapter.login({
 ## Troubleshooting
 
 ### Error: "requires middleware to be initialized"
-- Ensure `configure()` was called before using OIDC methods
+- Ensure the middleware instance was constructed before using OIDC methods
 - Verify `authServerUrl`, `realmName`, and `clientId` are set
 
 ### Error: "generateAuthorizationUrl requires redirect_uri"
@@ -245,4 +250,5 @@ npm test
 Refer to:
 - `oidc-methods.js` - Method implementations and full JSDoc documentation
 - `test/oidc-methods.test.js` - Test examples showing all use cases
-- [PKCE Login Flow Guide](../keycloak-api-manager/docs/guides/PKCE-Login-Flow.md) - Real-world usage patterns
+- [OIDC Token Endpoint Helpers](api/oidc-token-endpoint.md) - Runtime API behavior and parameters
+- [API Reference](api-reference.md) - Centralized API index

@@ -35,14 +35,14 @@ independent object instances — something that the earlier version did not supp
 ```js
 // OLD VERSION UP TO 3.0.9
 const express = require('express');
-const keycloackAdapter = require('keycloak-express-middleware');
+const keycloakAdapter = require('keycloak-express-middleware');
 
 const app = express();
-await keycloackAdapter.configure(app,{
+await keycloakAdapter.configure(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloackclientName",
+        "resource": "keycloakClientName",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -54,10 +54,10 @@ await keycloackAdapter.configure(app,{
         }
     });
 
-// Example of protection with keycloackAdapter.protectMiddleware middleware
+// Example of protection with keycloakAdapter.protectMiddleware middleware
 // with a static client role validation string
 // Access is allowed only for authenticated admin users
-app.get('/privateStaticClientRole', keycloackAdapter.protectMiddleware("admin"), (req, res) => {
+app.get('/privateStaticClientRole', keycloakAdapter.protectMiddleware("admin"), (req, res) => {
     // "Your Custom Code"
     res.send("You are an admin.");
 });
@@ -68,16 +68,16 @@ app.get('/privateStaticClientRole', keycloackAdapter.protectMiddleware("admin"),
 ```js
 // NEW VERSION STARTING FROM 4.0.0
 const express = require('express');
-const { keycloackAdapter } = require('keycloak-express-middleware');
+const keycloakAdapter = require('keycloak-express-middleware');
 
 const app = express();
 
 // Create independent Keycloak clients
-const keycloakA = new keycloackAdapter(app,{
+const keycloakA = new keycloakAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloackclientName_A",
+        "resource": "keycloakClientName_A",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -89,11 +89,11 @@ const keycloakA = new keycloackAdapter(app,{
         }
     });
 
-const keycloakB = new keycloackAdapter(app,{
+const keycloakB = new keycloakAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloackclientName_B",
+        "resource": "keycloakClientName_B",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -149,23 +149,23 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 ```js
 const express = require('express');
 // CommonJS - Default import
-const keycloackAdapter = require('keycloak-express-middleware');
+const keycloakAdapter = require('keycloak-express-middleware');
 
 // ES6 - Named import (recommended for clarity)
-// import { keycloackAdapter } from 'keycloak-express-middleware';
+// import { keycloackAdapter as keycloakAdapter } from 'keycloak-express-middleware';
 
 // ES6 - Default import
-// import keycloackAdapter from 'keycloak-express-middleware';
+// import keycloakAdapter from 'keycloak-express-middleware';
 
 const app = express();
 
 
 // Configure and Initialize Keycloak adapter
-const keycloakInstance = new keycloackAdapter(app,{
+const keycloakInstance = new keycloakAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloackclientName",
+        "resource": "keycloakClientName",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -376,10 +376,10 @@ a login or error page.
 
 ```js
 const responseinterceptor = require('responseinterceptor');
-const keycloackAdapter = require('keycloak-express-middleware');
+const keycloakAdapter = require('keycloak-express-middleware');
 
 const app = express();
-const keycloakInstance = new keycloackAdapter(app, keyCloakConfig, keyCloakOptions);
+const keycloakInstance = new keycloakAdapter(app, keycloakConfig, keycloakOptions);
 
 
 function tmpInterceptor(req, respond) {
@@ -538,14 +538,14 @@ app.get(
 ## 🧩 Configuration
 In your Express application:
 ```js
-const keycloackAdapter = require('keycloak-express-middleware');
+const keycloakAdapter = require('keycloak-express-middleware');
 
 // Configure and Initialize Keycloak adapter
-const keycloakInstance = new keycloackAdapter(app,{
+const keycloakInstance = new keycloakAdapter(app,{
         "realm": "Realm-Project",
         "auth-server-url": "https://YourKeycloakUrl:30040/",
         "ssl-required": "external",
-        "resource": "keycloackclientName",
+        "resource": "keycloakClientName",
         "credentials": {
             "secret": "aaaaaaaaaa"
         },
@@ -563,7 +563,7 @@ The constructor is synchronous and returns the configured instance immediately.
 
 **` -- @parameters -- `**
 - **app**: `[required]` Express application instance (e.g., const app = express();) or express router (e.g., var router = express.Router();)
-- **keyCloakConfig:** `[required]`JSON object containing the Keycloak client configuration.  This can be obtained from the Keycloak admin console: Clients → [client name] → Installation → "Keycloak OIDC JSON" → Download. It accepts other parameter not defined in downloaded config like:
+- **keycloakConfig:** `[required]`JSON object containing the Keycloak client configuration.  This can be obtained from the Keycloak admin console: Clients → [client name] → Installation → "Keycloak OIDC JSON" → Download. It accepts other parameter not defined in downloaded config like:
   - "verifyTokenAudience": If verify-token-audience = true, the adapter rejects the token if its audience does not match the client that receives it.
   - "bearerOnly": for public client. if it is set to true the client cannot call login services
   Example:   
@@ -579,7 +579,7 @@ The constructor is synchronous and returns the configured instance immediately.
 }
   
 ```
-- **keyCloakOptions**: `[required]` advanced configuration options for the adapter. Main supported options:
+- **keycloakOptions**: `[required]` advanced configuration options for the adapter. Main supported options:
   - **session:** Express session configuration (as in express-session)
   - **scope:** authentication scopes (e.g., 'openid profile email offline_access') **Note:** to use offline_access, the client must have the option enabled and the user must have the offline_access role.
   - **idpHint:** to suggest an identity provider to Keycloak during login
@@ -592,13 +592,13 @@ While the examples use CommonJS (`require`), the library also supports ES6 modul
 
 ```js
 // CommonJS (Default)
-const keycloackAdapter = require('keycloak-express-middleware');
+const keycloakAdapter = require('keycloak-express-middleware');
 
 // ES6 - Named import (recommended for clarity)
-import { keycloackAdapter } from 'keycloak-express-middleware';
+import { keycloackAdapter as keycloakAdapter } from 'keycloak-express-middleware';
 
 // ES6 - Default import
-import keycloackAdapter from 'keycloak-express-middleware';
+import keycloakAdapter from 'keycloak-express-middleware';
 ```
 
 ---
