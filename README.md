@@ -651,6 +651,16 @@ Protects routes through authentication and optional role-based authorization.
 - With a predicate function, your function decides access synchronously using token/request context.
 - On deny, Keycloak returns unauthorized/forbidden response according to adapter configuration.
 
+**Using `conditions` as a function**
+
+When `conditions` is a function, the middleware calls it with:
+
+- `token`: decoded Keycloak token helper object.
+- `req`: current Express request.
+
+The function must return `true` (allow) or `false` (deny) synchronously.
+This mode is useful when role checks must be combined with request-specific data (headers, params, query values, etc.).
+
 **Internal flow in practice**
 
 1. Middleware checks whether a valid Keycloak authentication context exists.
@@ -670,6 +680,18 @@ Protects routes through authentication and optional role-based authorization.
 app.get('/admin', keycloakInstance.protectMiddleware('admin'), (req, res) => {
     const token = req.kauth.grant.access_token.content;
     res.json({ user: token.preferred_username, scope: token.scope });
+});
+```
+
+**Example with `conditions` as function**
+
+```js
+app.get('/editor-area', keycloakInstance.protectMiddleware((token, req) => {
+    const hasEditorRole = token.hasRealmRole('editor');
+    const trustedChannel = req.headers['x-access-channel'] === 'internal-ui';
+    return hasEditorRole && trustedChannel;
+}), (req, res) => {
+    res.send('Access granted by custom function condition');
 });
 ```
 
