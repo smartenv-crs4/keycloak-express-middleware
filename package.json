@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "test": "npm --prefix test install && npm --prefix test run setup-keycloak && npm --prefix test test",
+    "test": "npm --prefix test install && npm --prefix test run setup-keycloak && NODE_PATH=./test/node_modules npm --prefix test test",
     "setup-keycloak": "eval \"$(ssh-agent -s)\" && ssh-add ~/.ssh/id_ed25519 && NODE_ENV=test node test/docker-keycloak/setup-keycloak.js"
   },
   "dependencies": {
