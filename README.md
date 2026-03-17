@@ -432,28 +432,64 @@ Practical examples:
 
 These APIs belong to different layers of the authentication/token lifecycle.
 
+In short:
+
+- `login(req, res, redirectTo)`: convenience helper for interactive browser login + redirect.
+- `loginPKCE(credentials)`: secure callback exchange for Authorization Code + PKCE flow.
+- `loginWithCredentials(credentials)`: low-level generic token endpoint client for multiple grants.
+
 | Aspect | `login(req, res, redirectTo)` | `loginPKCE(credentials)` | `loginWithCredentials(credentials)` |
 |---|---|---|---|
-| Main purpose | Trigger interactive browser login via middleware | Exchange authorization code + PKCE verifier for tokens | Generic OAuth2 token endpoint call |
+| Main purpose | Trigger interactive browser login and redirect user | Exchange authorization code + PKCE verifier for tokens | Generic OAuth2 token endpoint call |
 | Typical phase | Login entry route in Express app | Callback route after authorization redirect | Programmatic token operations |
 | Input style | Express `req`/`res` + redirect target | `code`, `redirect_uri`, `code_verifier` (+ aliases) | `grant_type` + fields required by selected grant |
 | Output | Redirect side effect | Token payload | Token payload |
 | Best fit | Session/server-rendered flow | PKCE-based web/mobile/SPA/BFF flows | Low-level grant handling (refresh, client credentials, etc.) |
+
+How to read this table:
+
+- `login(...)` is navigation-oriented (browser/session behavior).
+- `loginPKCE(...)` and `loginWithCredentials(...)` are token-oriented (you receive token objects to manage in code).
 
 Use `login(...)` when:
 
 - You want middleware-managed interactive login with redirect.
 - You are coding route-level navigation flow in Express.
 
+Important note about `login(...)`:
+
+- `login(...)` was added as a convenience helper.
+- You can reach the same authentication result using `protectMiddleware()` and then redirect manually.
+
+Equivalent behavior with `protectMiddleware()`:
+
+```js
+app.get('/signIn', keycloakInstance.protectMiddleware(), (req, res) => {
+    res.redirect('/home');
+});
+```
+
 Use `loginPKCE(...)` when:
 
 - You already initiated PKCE with `generateAuthorizationUrl(...)`.
 - You are handling callback exchange securely using stored `codeVerifier`.
 
+What `loginPKCE(...)` actually does:
+
+- Validates required PKCE callback inputs (`code`, `redirect_uri`, `code_verifier`).
+- Calls the token endpoint with grant type `authorization_code` and PKCE verifier.
+- Returns token payload for your own persistence/session strategy.
+
 Use `loginWithCredentials(...)` when:
 
 - You need direct token endpoint operations (e.g., refresh token, client credentials, custom grant handling).
 - You need a reusable low-level method for different OAuth2 grant payloads.
+
+What `loginWithCredentials(...)` actually does:
+
+- Builds and sends a generic `application/x-www-form-urlencoded` token request.
+- Supports multiple grant models by payload (`password`, `client_credentials`, `authorization_code`, `refresh_token`).
+- Returns raw token endpoint response or throws error on failure.
 
 Recommended PKCE sequence:
 
