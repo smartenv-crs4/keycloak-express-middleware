@@ -10,9 +10,9 @@ It is based on **'keycloak-connect'** and **'express-session'**.
 - [Migration Guide: From Old to New Version](#migration-guide-from-old-to-new-version)
 - [Installation](#installation)
 - [Get Keycloak Configuration](#get-keycloak-configuration)
+- [Full Usage Example](#full-usage-example)
 - [Authorization Models (Introduction)](#authorization-models-introduction)
     - [protect vs enforcer](#protect-vs-enforcer-when-to-use-each)
-- [Full Usage Example](#full-usage-example)
 - [API Documentation](#api-documentation)
     - [Core Functions](#core-functions)
         - [API - Constructor](#api---constructor)
@@ -280,7 +280,7 @@ app.get('/privateStaticRealmRole', keycloakInstance.protectMiddleware("realm:adm
 // Example of protection with keycloakInstance.protectMiddleware middleware
 // with a static other client role validation string
 // Access is allowed only for authenticated otherClient admin users
-app.get('/privateStaticRealmRole', keycloakInstance.protectMiddleware("otherClient:admin"), (req, res) => {
+app.get('/privateStaticOtherClientRole', keycloakInstance.protectMiddleware("otherClient:admin"), (req, res) => {
     // "Your Custom Code"
     res.send("You are an admin of otherClient.");
 });
