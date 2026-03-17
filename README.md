@@ -579,6 +579,18 @@ Creates one isolated adapter instance bound to one Keycloak client.
 
 - Configured middleware instance.
 
+**Practical example**
+
+```js
+const keycloakInstance = new keycloakAdapter(app, keycloakConfig, {
+    session: {
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false
+    }
+});
+```
+
 ### API - underKeycloakProtection (deprecated)
 
 **Signature**
@@ -972,6 +984,12 @@ Forces authentication and redirects authenticated users to destination.
 
 - Route callback after this middleware is typically not reached.
 
+**Example**
+
+```js
+app.get('/signIn', keycloakInstance.loginMiddleware('/home'));
+```
+
 ### API - logoutMiddleware(redirectTo)
 
 **Signature**
@@ -1001,6 +1019,12 @@ Destroys local session and redirects through Keycloak logout endpoint when token
 
 - If `id_token` exists, builds Keycloak logout URL and destroys session before redirect.
 - If token is missing, redirects directly to `redirectTo`.
+
+**Example**
+
+```js
+app.get('/signOut', keycloakInstance.logoutMiddleware('http://localhost:3000/'));
+```
 
 ### API - login(req, res, redirectTo)
 
@@ -1036,6 +1060,16 @@ Imperative login helper intended for use inside route handlers.
 - If not authenticated, user is redirected to Keycloak login.
 - Designed for imperative use inside a route where you may execute custom logic before triggering login.
 
+**Example**
+
+```js
+app.get('/login-if-needed', (req, res) => {
+    const needsInteractiveLogin = !req.session?.alreadyValidated;
+    if (!needsInteractiveLogin) return res.redirect('/home');
+    keycloakInstance.login(req, res, '/home');
+});
+```
+
 ### API - logout(req, res, redirectTo)
 
 **Signature**
@@ -1061,6 +1095,14 @@ Imperative logout helper intended for use inside route handlers.
 **Returns**
 
 - `void`.
+
+**Example**
+
+```js
+app.get('/logout-now', (req, res) => {
+    keycloakInstance.logout(req, res, 'http://localhost:3000/');
+});
+```
 
 ### API - generateAuthorizationUrl(options)
 
@@ -1160,6 +1202,15 @@ Generic OAuth2 token endpoint helper supporting multiple grant types.
 - Throws `Error` when middleware initialization data is missing.
 - Throws `Error` when token endpoint responds with non-success status.
 
+**Example (refresh token grant)**
+
+```js
+const refreshed = await keycloakInstance.loginWithCredentials({
+    grant_type: 'refresh_token',
+    refresh_token: storedRefreshToken
+});
+```
+
 ### API - loginPKCE(credentials)
 
 **Signature**
@@ -1236,6 +1287,14 @@ Redirects user to the Keycloak account console endpoint for the configured realm
 **Returns**
 
 - `void`.
+
+**Example**
+
+```js
+app.get('/my-account', (req, res) => {
+    keycloakInstance.redirectToUserAccountConsole(res);
+});
+```
 
 ---
 ## Handling Unauthorized Access (401/403) Gracefully
