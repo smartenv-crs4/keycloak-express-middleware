@@ -4,6 +4,7 @@
   "description": "Test suite for keycloak-express-middleware",
   "private": true,
   "scripts": {
+    "setup-keycloak": "NODE_ENV=test PROPERTIES_PATH=./config node helpers/keycloak-setup.js",
     "test": "NODE_ENV=test PROPERTIES_PATH=./config mocha --require support/setup.js --exit"
   },
   "dependencies": {
