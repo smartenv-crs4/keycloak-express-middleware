@@ -37,6 +37,12 @@ It is based on **'keycloak-connect'** and **'express-session'**.
         - [API - redirectToUserAccountConsole](#api---redirecttouseraccountconsoleres)
         - [API - hasScope](#api---hasscopescopeinput-requiredscope)
         - [API - hasScopes](#api---hasscopesscopeinput-requiredscopes-mode)
+        - [API - getTokenClaims](#api---gettokenclaimsreq)
+        - [API - isAuthenticated](#api---isauthenticatedreq)
+        - [API - getScopes](#api---getscopesscopeinputorreq)
+        - [API - hasScopeFromRequest](#api---hasscopefromrequestreq-requiredscope)
+        - [API - hasScopesFromRequest](#api---hasscopesfromrequestreq-requiredscopes-mode)
+        - [API - requireScopes](#api---requirescopesrequiredscopes-mode)
 - [Handling Unauthorized Access (401/403) Gracefully](#handling-unauthorized-access-401403-gracefully)
 - [Testing Documentation](#testing-documentation)
 - [License](#license)
@@ -1417,6 +1423,143 @@ const hasAny = keycloakInstance.hasScopes(
     scopeString,
     ['email', 'offline_access'],
     'any'
+);
+```
+
+#### API - getTokenClaims(req)
+
+**Signature**
+
+```js
+getTokenClaims(req)
+```
+
+Safely returns decoded access token claims from request.
+
+**Returns**
+
+- `Object`: token claims object, or `{}` if token is unavailable.
+
+**Example**
+
+```js
+const claims = keycloakInstance.getTokenClaims(req);
+const username = claims.preferred_username;
+```
+
+#### API - isAuthenticated(req)
+
+**Signature**
+
+```js
+isAuthenticated(req)
+```
+
+Checks whether request contains a Keycloak access token.
+
+**Returns**
+
+- `boolean`.
+
+**Example**
+
+```js
+if (!keycloakInstance.isAuthenticated(req)) {
+    return res.status(401).send('Not authenticated');
+}
+```
+
+#### API - getScopes(scopeInputOrReq)
+
+**Signature**
+
+```js
+getScopes(scopeInputOrReq)
+```
+
+Normalizes scopes to an array from one of:
+
+- scope string
+- scope array
+- Express request (`req.kauth.grant.access_token.content.scope`)
+
+**Returns**
+
+- `string[]`.
+
+**Example**
+
+```js
+const scopes = keycloakInstance.getScopes(req);
+// ['openid', 'profile', 'email']
+```
+
+#### API - hasScopeFromRequest(req, requiredScope)
+
+**Signature**
+
+```js
+hasScopeFromRequest(req, requiredScope)
+```
+
+Convenience wrapper around `hasScope(...)` using request token claims.
+
+**Returns**
+
+- `boolean`.
+
+**Example**
+
+```js
+const canReadEmail = keycloakInstance.hasScopeFromRequest(req, 'email');
+```
+
+#### API - hasScopesFromRequest(req, requiredScopes, mode)
+
+**Signature**
+
+```js
+hasScopesFromRequest(req, requiredScopes, mode = 'all')
+```
+
+Convenience wrapper around `hasScopes(...)` using request token claims.
+
+**Returns**
+
+- `boolean`.
+
+**Example**
+
+```js
+const allowed = keycloakInstance.hasScopesFromRequest(
+    req,
+    ['openid', 'profile'],
+    'all'
+);
+```
+
+#### API - requireScopes(requiredScopes, mode)
+
+**Signature**
+
+```js
+requireScopes(requiredScopes, mode = 'all')
+```
+
+Express middleware that enforces scopes and responds `403` if missing.
+
+**Returns**
+
+- Middleware return.
+
+**Example**
+
+```js
+app.get(
+    '/profile-email',
+    keycloakInstance.protectMiddleware(),
+    keycloakInstance.requireScopes(['email'], 'all'),
+    (req, res) => res.send('Scope check passed')
 );
 ```
 

@@ -468,5 +468,145 @@ describe('Middleware and Imperative Methods', function() {
       assert.strictEqual(adapter.hasScopes(scopeString, ['email', 'profile'], 'any'), true);
       assert.strictEqual(adapter.hasScopes(scopeString, ['email', 'offline_access'], 'any'), false);
     });
+
+    it('getTokenClaims returns decoded claims when available', function() {
+      const adapter = buildAdapter();
+      const req = {
+        kauth: {
+          grant: {
+            access_token: {
+              content: {
+                preferred_username: 'alice',
+                scope: 'openid profile email'
+              }
+            }
+          }
+        }
+      };
+
+      const claims = adapter.getTokenClaims(req);
+      assert.strictEqual(claims.preferred_username, 'alice');
+      assert.strictEqual(claims.scope, 'openid profile email');
+    });
+
+    it('getTokenClaims returns empty object when missing', function() {
+      const adapter = buildAdapter();
+      assert.deepStrictEqual(adapter.getTokenClaims({}), {});
+    });
+
+    it('isAuthenticated returns true only when access token is present', function() {
+      const adapter = buildAdapter();
+      const yesReq = { kauth: { grant: { access_token: { content: {} } } } };
+      const noReq = { kauth: { grant: {} } };
+
+      assert.strictEqual(adapter.isAuthenticated(yesReq), true);
+      assert.strictEqual(adapter.isAuthenticated(noReq), false);
+    });
+
+    it('getScopes supports req input', function() {
+      const adapter = buildAdapter();
+      const req = {
+        kauth: {
+          grant: {
+            access_token: {
+              content: {
+                scope: 'openid profile email'
+              }
+            }
+          }
+        }
+      };
+
+      assert.deepStrictEqual(adapter.getScopes(req), ['openid', 'profile', 'email']);
+    });
+
+    it('hasScopeFromRequest works with request token scope', function() {
+      const adapter = buildAdapter();
+      const req = {
+        kauth: {
+          grant: {
+            access_token: {
+              content: {
+                scope: 'openid profile'
+              }
+            }
+          }
+        }
+      };
+
+      assert.strictEqual(adapter.hasScopeFromRequest(req, 'profile'), true);
+      assert.strictEqual(adapter.hasScopeFromRequest(req, 'email'), false);
+    });
+
+    it('hasScopesFromRequest supports all/any modes', function() {
+      const adapter = buildAdapter();
+      const req = {
+        kauth: {
+          grant: {
+            access_token: {
+              content: {
+                scope: 'openid profile'
+              }
+            }
+          }
+        }
+      };
+
+      assert.strictEqual(adapter.hasScopesFromRequest(req, ['openid', 'profile'], 'all'), true);
+      assert.strictEqual(adapter.hasScopesFromRequest(req, ['openid', 'email'], 'all'), false);
+      assert.strictEqual(adapter.hasScopesFromRequest(req, ['email', 'profile'], 'any'), true);
+    });
+
+    it('requireScopes calls next when scope check passes', function(done) {
+      const adapter = buildAdapter();
+      const req = {
+        kauth: {
+          grant: {
+            access_token: {
+              content: {
+                scope: 'openid profile email'
+              }
+            }
+          }
+        }
+      };
+
+      const mw = adapter.requireScopes(['openid', 'email'], 'all');
+      mw(req, {}, () => done());
+    });
+
+    it('requireScopes returns 403 JSON payload when scope check fails', function() {
+      const adapter = buildAdapter();
+      const req = {
+        kauth: {
+          grant: {
+            access_token: {
+              content: {
+                scope: 'openid'
+              }
+            }
+          }
+        }
+      };
+
+      let statusCode = null;
+      let payload = null;
+      const res = {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(data) {
+          payload = data;
+        }
+      };
+
+      const mw = adapter.requireScopes(['openid', 'email'], 'all');
+      mw(req, res, () => {});
+
+      assert.strictEqual(statusCode, 403);
+      assert.strictEqual(payload.error, 'forbidden');
+      assert.strictEqual(payload.mode, 'all');
+    });
   });
 });

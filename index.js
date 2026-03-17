@@ -1052,6 +1052,112 @@ class keycloakExpressMiddleware {
         return normalizedTargets.every((scope) => this.hasScope(scopeInput, scope));
     }
 
+    /**
+     * Safely read decoded access token claims from an Express request.
+     *
+     * @param {Object} req - Express request object.
+     * @returns {Object} Decoded access token claims, or empty object when unavailable.
+     */
+    getTokenClaims(req){
+        return req?.kauth?.grant?.access_token?.content || {};
+    }
+
+    /**
+     * Check whether request contains a Keycloak-authenticated access token.
+     *
+     * @param {Object} req - Express request object.
+     * @returns {boolean} True when access token is present, false otherwise.
+     */
+    isAuthenticated(req){
+        return !!req?.kauth?.grant?.access_token;
+    }
+
+    /**
+     * Normalize scopes into an array.
+     *
+     * Input accepted:
+     * - space-separated scope string
+     * - scope array
+     * - Express request object (reads `req.kauth.grant.access_token.content.scope`)
+     *
+     * @param {string|string[]|Object} scopeInputOrReq - Scope source string/array or Express request.
+     * @returns {string[]} Normalized scope array.
+     */
+    getScopes(scopeInputOrReq){
+        const looksLikeReq = scopeInputOrReq && typeof scopeInputOrReq === 'object' && ('kauth' in scopeInputOrReq || 'headers' in scopeInputOrReq || 'method' in scopeInputOrReq);
+        const rawScope = looksLikeReq
+            ? this.getTokenClaims(scopeInputOrReq).scope
+            : scopeInputOrReq;
+
+        const scopes = Array.isArray(rawScope)
+            ? rawScope
+            : String(rawScope || '').split(' ');
+
+        return scopes
+            .map((s) => String(s || '').trim())
+            .filter(Boolean);
+    }
+
+    /**
+     * Check scope directly from Express request token claims.
+     *
+     * @param {Object} req - Express request.
+     * @param {string} requiredScope - Scope to verify.
+     * @returns {boolean} True when scope is present.
+     */
+    hasScopeFromRequest(req, requiredScope){
+        return this.hasScope(this.getScopes(req), requiredScope);
+    }
+
+    /**
+     * Check multiple scopes directly from Express request token claims.
+     *
+     * @param {Object} req - Express request.
+     * @param {string|string[]} requiredScopes - Required scope(s).
+     * @param {'all'|'any'} [mode='all'] - Matching mode.
+     * @returns {boolean} Scope check result.
+     */
+    hasScopesFromRequest(req, requiredScopes, mode = 'all'){
+        return this.hasScopes(this.getScopes(req), requiredScopes, mode);
+    }
+
+    /**
+     * Express middleware that enforces required scopes.
+     *
+     * - Calls `next()` when scope check passes.
+     * - Returns 403 response when scope check fails.
+     *
+     * @param {string|string[]} requiredScopes - Scope(s) to enforce.
+     * @param {'all'|'any'} [mode='all'] - Matching mode.
+     * @returns {Function} Express middleware.
+     */
+    requireScopes(requiredScopes, mode = 'all'){
+        return (req, res, next) => {
+            if (this.hasScopesFromRequest(req, requiredScopes, mode)) {
+                return next();
+            }
+
+            const payload = {
+                error: 'forbidden',
+                message: 'Missing required scope(s)',
+                requiredScopes: Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes],
+                mode
+            };
+
+            if (typeof res.status === 'function') {
+                res.status(403);
+            }
+
+            if (typeof res.json === 'function') {
+                return res.json(payload);
+            }
+
+            if (typeof res.send === 'function') {
+                return res.send(payload.message);
+            }
+        };
+    }
+
 
 
 
