@@ -15,22 +15,25 @@ It is based on **'keycloak-connect'** and **'express-session'**.
     - [login vs loginPKCE vs loginWithCredentials](#login-vs-loginpkce-vs-loginwithcredentials-when-to-use-each)
 - [Full Usage Example](#full-usage-example)
 - [API Documentation](#api-documentation)
-    - [API - Constructor](#api---constructor)
-    - [API - underKeycloakProtection (deprecated)](#api---underkeycloakprotection-deprecated)
-    - [API - protectMiddleware](#api---protectmiddlewareconditions)
-    - [API - customProtectMiddleware](#api---customprotectmiddlewarecustomfunction)
-    - [API - enforcerMiddleware](#api---enforcermiddlewareconditions-options)
-    - [API - customEnforcerMiddleware](#api---customenforcermiddlewarecustomfunction-options)
-    - [API - encodeTokenRole](#api---encodetokenrole)
-    - [API - encodeTokenPermission](#api---encodetokenpermission)
-    - [API - loginMiddleware](#api---loginmiddlewareredirectto)
-    - [API - logoutMiddleware](#api---logoutmiddlewareredirectto)
-    - [API - login](#api---loginreq-res-redirectto)
-    - [API - logout](#api---logoutreq-res-redirectto)
-    - [API - generateAuthorizationUrl](#api---generateauthorizationurloptions)
-    - [API - loginWithCredentials](#api---loginwithcredentialscredentials)
-    - [API - loginPKCE](#api---loginpkcecredentials)
-    - [API - redirectToUserAccountConsole](#api---redirecttouseraccountconsoleres)
+    - [Core Functions](#core-functions)
+        - [API - Constructor](#api---constructor)
+        - [API - underKeycloakProtection (deprecated)](#api---underkeycloakprotection-deprecated)
+    - [Middleware APIs](#middleware-apis)
+        - [API - protectMiddleware](#api---protectmiddlewareconditions)
+        - [API - customProtectMiddleware](#api---customprotectmiddlewarecustomfunction)
+        - [API - enforcerMiddleware](#api---enforcermiddlewareconditions-options)
+        - [API - customEnforcerMiddleware](#api---customenforcermiddlewarecustomfunction-options)
+        - [API - encodeTokenRole](#api---encodetokenrole)
+        - [API - encodeTokenPermission](#api---encodetokenpermission)
+        - [API - loginMiddleware](#api---loginmiddlewareredirectto)
+        - [API - logoutMiddleware](#api---logoutmiddlewareredirectto)
+    - [Imperative and OIDC Functions](#imperative-and-oidc-functions)
+        - [API - login](#api---loginreq-res-redirectto)
+        - [API - logout](#api---logoutreq-res-redirectto)
+        - [API - generateAuthorizationUrl](#api---generateauthorizationurloptions)
+        - [API - loginWithCredentials](#api---loginwithcredentialscredentials)
+        - [API - loginPKCE](#api---loginpkcecredentials)
+        - [API - redirectToUserAccountConsole](#api---redirecttouseraccountconsoleres)
 - [Handling Unauthorized Access (401/403) Gracefully](#handling-unauthorized-access-401403-gracefully)
 - [Testing Documentation](#testing-documentation)
 - [License](#license)
@@ -544,7 +547,9 @@ Reference conventions used below:
 - `Middleware return`: function consumable by Express route registration.
 - Error sections include only explicit runtime errors thrown by the method itself.
 
-### API - Constructor
+### Core Functions
+
+#### API - Constructor
 
 **Signature**
 
@@ -591,7 +596,7 @@ const keycloakInstance = new keycloakAdapter(app, keycloakConfig, {
 });
 ```
 
-### API - underKeycloakProtection (deprecated)
+#### API - underKeycloakProtection (deprecated)
 
 **Signature**
 
@@ -619,7 +624,9 @@ keycloakInstance.underKeycloakProtection(() => {
 });
 ```
 
-### API - protectMiddleware(conditions)
+### Middleware APIs
+
+#### API - protectMiddleware(conditions)
 
 **Signature**
 
@@ -707,7 +714,7 @@ app.get('/editor-area', keycloakInstance.protectMiddleware((token, req) => {
 });
 ```
 
-### API - customProtectMiddleware(customFunction)
+#### API - customProtectMiddleware(customFunction)
 
 **Signature**
 
@@ -745,7 +752,7 @@ app.get('/tenant/:role', keycloakInstance.customProtectMiddleware((req) => {
 }), handler);
 ```
 
-### API - enforcerMiddleware(conditions, options)
+#### API - enforcerMiddleware(conditions, options)
 
 **Signature**
 
@@ -838,7 +845,7 @@ app.get('/reports/:id', keycloakInstance.enforcerMiddleware((token, req, callbac
 });
 ```
 
-### API - customEnforcerMiddleware(customFunction, options)
+#### API - customEnforcerMiddleware(customFunction, options)
 
 **Signature**
 
@@ -877,7 +884,7 @@ app.get('/resource/:permission', keycloakInstance.customEnforcerMiddleware((req)
 }), handler);
 ```
 
-### API - encodeTokenRole
+#### API - encodeTokenRole
 
 **Signature**
 
@@ -914,7 +921,7 @@ app.get('/profile', keycloakInstance.encodeTokenRole(), (req, res) => {
 });
 ```
 
-### API - encodeTokenPermission
+#### API - encodeTokenPermission
 
 **Signature**
 
@@ -955,7 +962,7 @@ app.get('/can-read', keycloakInstance.encodeTokenPermission(), (req, res) => {
 });
 ```
 
-### API - loginMiddleware(redirectTo)
+#### API - loginMiddleware(redirectTo)
 
 **Signature**
 
@@ -990,7 +997,7 @@ Forces authentication and redirects authenticated users to destination.
 app.get('/signIn', keycloakInstance.loginMiddleware('/home'));
 ```
 
-### API - logoutMiddleware(redirectTo)
+#### API - logoutMiddleware(redirectTo)
 
 **Signature**
 
@@ -1026,7 +1033,9 @@ Destroys local session and redirects through Keycloak logout endpoint when token
 app.get('/signOut', keycloakInstance.logoutMiddleware('http://localhost:3000/'));
 ```
 
-### API - login(req, res, redirectTo)
+### Imperative and OIDC Functions
+
+#### API - login(req, res, redirectTo)
 
 **Signature**
 
@@ -1070,7 +1079,7 @@ app.get('/login-if-needed', (req, res) => {
 });
 ```
 
-### API - logout(req, res, redirectTo)
+#### API - logout(req, res, redirectTo)
 
 **Signature**
 
@@ -1104,7 +1113,7 @@ app.get('/logout-now', (req, res) => {
 });
 ```
 
-### API - generateAuthorizationUrl(options)
+#### API - generateAuthorizationUrl(options)
 
 **Signature**
 
@@ -1157,7 +1166,7 @@ req.session.pkce_verifier = pkce.codeVerifier;
 res.redirect(pkce.authUrl);
 ```
 
-### API - loginWithCredentials(credentials)
+#### API - loginWithCredentials(credentials)
 
 **Signature**
 
@@ -1211,7 +1220,7 @@ const refreshed = await keycloakInstance.loginWithCredentials({
 });
 ```
 
-### API - loginPKCE(credentials)
+#### API - loginPKCE(credentials)
 
 **Signature**
 
@@ -1263,7 +1272,7 @@ const tokens = await keycloakInstance.loginPKCE({
 });
 ```
 
-### API - redirectToUserAccountConsole(res)
+#### API - redirectToUserAccountConsole(res)
 
 **Signature**
 
