@@ -7,6 +7,14 @@ This guide explains how to integrate the OIDC authentication methods (`generateA
 - **`oidc-methods.js`** - Ready-to-use OIDC methods (no external dependencies)
 - **`test/oidc-methods.test.js`** - Complete test suite (run with `npm test`)
 
+## Client Prerequisites (Non-Browser Flows)
+
+- `loginWithCredentials(credentials)` is a generic token endpoint helper.
+- If you use it with `grant_type=password`, the Keycloak client must have `Direct Access Grants` enabled.
+- This means the client exchanges user username/password directly with Keycloak token endpoint.
+- In OAuth2 specification terms, this enables `Resource Owner Password Credentials Grant` support for that client.
+- `loginPKCE(credentials)` uses `authorization_code` + `code_verifier` and does not require `Direct Access Grants`.
+
 ## Integration Steps
 
 ### Step 1: Run Tests (Verify Methods Work)

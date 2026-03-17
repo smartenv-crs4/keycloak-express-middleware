@@ -17,6 +17,9 @@ Important alignment notes with current implementation:
 - Use a middleware instance created with:
   new keycloackAdapter(app, keyCloackConfig, keyCloackOptions)
 - For generic token endpoint exchange use loginWithCredentials, not login.
+- If loginWithCredentials is used with grant_type=password, enable Direct Access Grants on the client.
+- This is OAuth2 Resource Owner Password Credentials Grant support for that client.
+- loginPKCE (authorization_code + code_verifier) does not require Direct Access Grants.
 
 Quick verification command:
 

@@ -863,6 +863,12 @@ class keycloakExpressMiddleware {
      * - client_credentials: Client Credentials Grant
      * - authorization_code: Authorization Code Grant (without PKCE)
      * - refresh_token: Refresh Token Grant
+    *
+    * Client prerequisite note:
+    * - When using `grant_type=password`, Keycloak client must have Direct Access Grants enabled.
+    * - This means the client exchanges user username/password directly with Keycloak token endpoint.
+    * - In OAuth2 terms, this is Resource Owner Password Credentials Grant support for that client.
+    * - This prerequisite does not apply to `client_credentials`, `refresh_token`, or `authorization_code` payloads.
      * 
      * The method automatically appends clientId/clientSecret if configured and not overridden.
      * 
@@ -932,6 +938,10 @@ class keycloakExpressMiddleware {
      * 
      * This method is specialized for the callback route after user login.
      * It exchanges the authorization code (from redirect) + code_verifier for tokens.
+        *
+        * Client prerequisite note:
+        * - PKCE uses `authorization_code` + `code_verifier` and does not require Direct Access Grants.
+        * - Direct Access Grants is only required when using `grant_type=password` (ROPC) in loginWithCredentials.
      * 
      * @param {Object} credentials - Token exchange parameters
      * @param {string} credentials.code - Authorization code (from Keycloak redirect) - REQUIRED

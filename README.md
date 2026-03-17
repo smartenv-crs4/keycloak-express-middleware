@@ -1039,6 +1039,10 @@ What `loginPKCE(...)` actually does:
 - Calls the token endpoint with grant type `authorization_code` and PKCE verifier.
 - Returns token payload for your own persistence/session strategy.
 
+Client configuration note for PKCE:
+
+- `loginPKCE(...)` uses Authorization Code + PKCE and does **not** require `Direct Access Grants`.
+
 Use `loginWithCredentials(...)` when:
 
 - You need direct token endpoint operations (e.g., refresh token, client credentials, custom grant handling).
@@ -1049,6 +1053,12 @@ What `loginWithCredentials(...)` actually does:
 - Builds and sends a generic `application/x-www-form-urlencoded` token request.
 - Supports multiple grant models by payload (`password`, `client_credentials`, `authorization_code`, `refresh_token`).
 - Returns raw token endpoint response or throws error on failure.
+
+Client configuration note for non-browser password login:
+
+- When `loginWithCredentials(...)` is used with `grant_type=password`, the client must have `Direct Access Grants` enabled in Keycloak.
+- This means the client handles username/password directly and exchanges them with Keycloak token endpoint.
+- In OAuth2 terms, this enables `Resource Owner Password Credentials Grant` support for that client.
 
 Recommended PKCE sequence:
 
@@ -1211,6 +1221,12 @@ Generic OAuth2 token endpoint helper supporting multiple grant types.
 - `authorization_code`
 - `refresh_token`
 
+**Client configuration requirement (`password` grant only)**
+
+- If you call `loginWithCredentials(...)` with `grant_type=password`, the Keycloak client must have `Direct Access Grants` enabled.
+- This corresponds to OAuth2 `Resource Owner Password Credentials Grant` for that client.
+- This requirement does not apply to `client_credentials`, `refresh_token`, or `authorization_code` payloads.
+
 **Parameters**
 
 | Name | Type | Required | Description |
@@ -1262,6 +1278,7 @@ Performs authorization-code + PKCE verifier exchange.
 
 - PKCE mitigates intercepted authorization code reuse by binding code to `code_verifier`.
 - This method encapsulates the correct grant payload shape for PKCE callback stage.
+- PKCE callback exchange does not require `Direct Access Grants`.
 
 **Parameters**
 
