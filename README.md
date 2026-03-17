@@ -390,6 +390,30 @@ app.get('/encodeTokenPermission', keycloakInstance.encodeTokenPermission(), (req
 });
 
 
+// Example of direct token endpoint usage with keycloakInstance.loginWithCredentials
+// Useful for server-to-server operations (client credentials flow)
+app.get('/service-token', async (req, res) => {
+    try {
+        const tokenResponse = await keycloakInstance.loginWithCredentials({
+            grant_type: 'client_credentials',
+            scope: 'openid profile email'
+        });
+
+        res.json({
+            access_token: tokenResponse.access_token,
+            expires_in: tokenResponse.expires_in,
+            token_type: tokenResponse.token_type,
+            scope: tokenResponse.scope
+        });
+    } catch (err) {
+        res.status(401).json({
+            error: 'Token request failed',
+            details: err.message
+        });
+    }
+});
+
+
 
 // Start the server
 const PORT = process.env.PORT || 3000;
