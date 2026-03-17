@@ -181,74 +181,6 @@ the Keycloak Admin Console → clients (left sidebar) → choose your client →
 ```
 
 ---
-## Authorization and Login Models (Introduction)
-
-This package exposes two different authorization families and multiple login/token flows.
-Understanding this distinction before reading the single-method API reference helps you select the correct integration strategy.
-
-### protect vs enforcer (when to use each)
-
-Both protect routes, but they represent different security models.
-
-| Aspect | `protectMiddleware` | `enforcerMiddleware` |
-|---|---|---|
-| Core model | Role-based access control (RBAC) | Permission/policy-based access control (Authorization Services, UMA) |
-| Input | Roles (`admin`, `realm:admin`, `client:role`) | Resource/scope permissions (`invoice:read`, `report-resource:view`) |
-| Decision source | Token roles | Keycloak Authorization Services policies |
-| Setup complexity | Low | Medium/High |
-| Typical usage | Standard protected areas, role-gated endpoints | Fine-grained resource protection, ownership/scoped access |
-
-Use `protectMiddleware` when:
-
-- Your access rules are role-centric.
-- You need quick, explicit route-level authorization with minimal Keycloak policy setup.
-
-Use `enforcerMiddleware` when:
-
-- Access depends on resource and scope permissions.
-- You want policies managed in Keycloak and evaluated centrally.
-
-Practical examples:
-
-- `protectMiddleware('admin')`: endpoint reserved to users with admin role.
-- `enforcerMiddleware('invoice:approve')`: endpoint reserved to users with explicit permission to approve invoices.
-
-### login vs loginPKCE vs loginWithCredentials (when to use each)
-
-These APIs belong to different layers of the authentication/token lifecycle.
-
-| Aspect | `login(req, res, redirectTo)` | `loginPKCE(credentials)` | `loginWithCredentials(credentials)` |
-|---|---|---|---|
-| Main purpose | Trigger interactive browser login via middleware | Exchange authorization code + PKCE verifier for tokens | Generic OAuth2 token endpoint call |
-| Typical phase | Login entry route in Express app | Callback route after authorization redirect | Programmatic token operations |
-| Input style | Express `req`/`res` + redirect target | `code`, `redirect_uri`, `code_verifier` (+ aliases) | `grant_type` + fields required by selected grant |
-| Output | Redirect side effect | Token payload | Token payload |
-| Best fit | Session/server-rendered flow | PKCE-based web/mobile/SPA/BFF flows | Low-level grant handling (refresh, client credentials, etc.) |
-
-Use `login(...)` when:
-
-- You want middleware-managed interactive login with redirect.
-- You are coding route-level navigation flow in Express.
-
-Use `loginPKCE(...)` when:
-
-- You already initiated PKCE with `generateAuthorizationUrl(...)`.
-- You are handling callback exchange securely using stored `codeVerifier`.
-
-Use `loginWithCredentials(...)` when:
-
-- You need direct token endpoint operations (e.g., refresh token, client credentials, custom grant handling).
-- You need a reusable low-level method for different OAuth2 grant payloads.
-
-Recommended PKCE sequence:
-
-1. Start flow with `generateAuthorizationUrl(...)` and persist `state` + `codeVerifier` server-side.
-2. Redirect user to generated authorization URL.
-3. Receive authorization `code` in callback.
-4. Exchange using `loginPKCE(...)`.
-5. Use/persist tokens according to your session/token strategy.
-
----
 ## Full Usage Example
 ```js
 const express = require('express');
@@ -464,6 +396,74 @@ app.listen(PORT, () => {
 ```
 ---
 
+## Authorization and Login Models (Introduction)
+
+This package exposes two different authorization families and multiple login/token flows.
+Understanding this distinction before reading the single-method API reference helps you select the correct integration strategy.
+
+### protect vs enforcer (when to use each)
+
+Both protect routes, but they represent different security models.
+
+| Aspect | `protectMiddleware` | `enforcerMiddleware` |
+|---|---|---|
+| Core model | Role-based access control (RBAC) | Permission/policy-based access control (Authorization Services, UMA) |
+| Input | Roles (`admin`, `realm:admin`, `client:role`) | Resource/scope permissions (`invoice:read`, `report-resource:view`) |
+| Decision source | Token roles | Keycloak Authorization Services policies |
+| Setup complexity | Low | Medium/High |
+| Typical usage | Standard protected areas, role-gated endpoints | Fine-grained resource protection, ownership/scoped access |
+
+Use `protectMiddleware` when:
+
+- Your access rules are role-centric.
+- You need quick, explicit route-level authorization with minimal Keycloak policy setup.
+
+Use `enforcerMiddleware` when:
+
+- Access depends on resource and scope permissions.
+- You want policies managed in Keycloak and evaluated centrally.
+
+Practical examples:
+
+- `protectMiddleware('admin')`: endpoint reserved to users with admin role.
+- `enforcerMiddleware('invoice:approve')`: endpoint reserved to users with explicit permission to approve invoices.
+
+### login vs loginPKCE vs loginWithCredentials (when to use each)
+
+These APIs belong to different layers of the authentication/token lifecycle.
+
+| Aspect | `login(req, res, redirectTo)` | `loginPKCE(credentials)` | `loginWithCredentials(credentials)` |
+|---|---|---|---|
+| Main purpose | Trigger interactive browser login via middleware | Exchange authorization code + PKCE verifier for tokens | Generic OAuth2 token endpoint call |
+| Typical phase | Login entry route in Express app | Callback route after authorization redirect | Programmatic token operations |
+| Input style | Express `req`/`res` + redirect target | `code`, `redirect_uri`, `code_verifier` (+ aliases) | `grant_type` + fields required by selected grant |
+| Output | Redirect side effect | Token payload | Token payload |
+| Best fit | Session/server-rendered flow | PKCE-based web/mobile/SPA/BFF flows | Low-level grant handling (refresh, client credentials, etc.) |
+
+Use `login(...)` when:
+
+- You want middleware-managed interactive login with redirect.
+- You are coding route-level navigation flow in Express.
+
+Use `loginPKCE(...)` when:
+
+- You already initiated PKCE with `generateAuthorizationUrl(...)`.
+- You are handling callback exchange securely using stored `codeVerifier`.
+
+Use `loginWithCredentials(...)` when:
+
+- You need direct token endpoint operations (e.g., refresh token, client credentials, custom grant handling).
+- You need a reusable low-level method for different OAuth2 grant payloads.
+
+Recommended PKCE sequence:
+
+1. Start flow with `generateAuthorizationUrl(...)` and persist `state` + `codeVerifier` server-side.
+2. Redirect user to generated authorization URL.
+3. Receive authorization `code` in callback.
+4. Exchange using `loginPKCE(...)`.
+5. Use/persist tokens according to your session/token strategy.
+
+---
 ## API Documentation
 
 This section provides a complete reference for all public APIs exposed by the middleware class.
