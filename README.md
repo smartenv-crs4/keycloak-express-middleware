@@ -12,7 +12,6 @@ It is based on **'keycloak-connect'** and **'express-session'**.
 - [Get Keycloak Configuration](#get-keycloak-configuration)
 - [Authorization and Login Models (Introduction)](#authorization-and-login-models-introduction)
     - [protect vs enforcer](#protect-vs-enforcer-when-to-use-each)
-    - [login vs loginPKCE vs loginWithCredentials](#login-vs-loginpkce-vs-loginwithcredentials-when-to-use-each)
 - [Full Usage Example](#full-usage-example)
 - [API Documentation](#api-documentation)
     - [Core Functions](#core-functions)
@@ -28,6 +27,7 @@ It is based on **'keycloak-connect'** and **'express-session'**.
         - [API - loginMiddleware](#api---loginmiddlewareredirectto)
         - [API - logoutMiddleware](#api---logoutmiddlewareredirectto)
     - [Imperative and OIDC Functions](#imperative-and-oidc-functions)
+        - [login vs loginPKCE vs loginWithCredentials](#login-vs-loginpkce-vs-loginwithcredentials-when-to-use-each)
         - [API - login](#api---loginreq-res-redirectto)
         - [API - logout](#api---logoutreq-res-redirectto)
         - [API - generateAuthorizationUrl](#api---generateauthorizationurloptions)
@@ -454,34 +454,6 @@ Practical examples:
 
 - `protectMiddleware('admin')`: endpoint reserved to users with admin role.
 - `enforcerMiddleware('invoice:approve')`: endpoint reserved to users with explicit permission to approve invoices.
-
-### login vs loginPKCE vs loginWithCredentials (when to use each)
-
-These APIs belong to different layers of the authentication/token lifecycle.
-
-In short:
-
-- `login(req, res, redirectTo)`: convenience helper for interactive browser login + redirect.
-- `loginPKCE(credentials)`: secure callback exchange for Authorization Code + PKCE flow.
-- `loginWithCredentials(credentials)`: low-level generic token endpoint client for multiple grants.
-
-| Aspect | `login(req, res, redirectTo)` | `loginPKCE(credentials)` | `loginWithCredentials(credentials)` |
-|---|---|---|---|
-| Main purpose | Trigger interactive browser login and redirect user | Exchange authorization code + PKCE verifier for tokens | Generic OAuth2 token endpoint call |
-| Typical phase | Login entry route in Express app | Callback route after authorization redirect | Programmatic token operations |
-| Input style | Express `req`/`res` + redirect target | `code`, `redirect_uri`, `code_verifier` (+ aliases) | `grant_type` + fields required by selected grant |
-| Output | Redirect side effect | Token payload | Token payload |
-| Best fit | Session/server-rendered flow | PKCE-based web/mobile/SPA/BFF flows | Low-level grant handling (refresh, client credentials, etc.) |
-
-How to read this table:
-
-- `login(...)` is navigation-oriented (browser/session behavior).
-- `loginPKCE(...)` and `loginWithCredentials(...)` are token-oriented (you receive token objects to manage in code).
-
-Use `login(...)` when:
-
-- You want middleware-managed interactive login with redirect.
-- You are coding route-level navigation flow in Express.
 
 ### loginMiddleware() vs login() (same goal, different style)
 
@@ -1058,6 +1030,34 @@ app.get('/signOut', keycloakInstance.logoutMiddleware('http://localhost:3000/'))
 ```
 
 ### Imperative and OIDC Functions
+
+#### login vs loginPKCE vs loginWithCredentials (when to use each)
+
+These APIs belong to different layers of the authentication/token lifecycle.
+
+In short:
+
+- `login(req, res, redirectTo)`: convenience helper for interactive browser login + redirect.
+- `loginPKCE(credentials)`: secure callback exchange for Authorization Code + PKCE flow.
+- `loginWithCredentials(credentials)`: low-level generic token endpoint client for multiple grants.
+
+| Aspect | `login(req, res, redirectTo)` | `loginPKCE(credentials)` | `loginWithCredentials(credentials)` |
+|---|---|---|---|
+| Main purpose | Trigger interactive browser login and redirect user | Exchange authorization code + PKCE verifier for tokens | Generic OAuth2 token endpoint call |
+| Typical phase | Login entry route in Express app | Callback route after authorization redirect | Programmatic token operations |
+| Input style | Express `req`/`res` + redirect target | `code`, `redirect_uri`, `code_verifier` (+ aliases) | `grant_type` + fields required by selected grant |
+| Output | Redirect side effect | Token payload | Token payload |
+| Best fit | Session/server-rendered flow | PKCE-based web/mobile/SPA/BFF flows | Low-level grant handling (refresh, client credentials, etc.) |
+
+How to read this table:
+
+- `login(...)` is navigation-oriented (browser/session behavior).
+- `loginPKCE(...)` and `loginWithCredentials(...)` are token-oriented (you receive token objects to manage in code).
+
+Use `login(...)` when:
+
+- You want middleware-managed interactive login with redirect.
+- You are coding route-level navigation flow in Express.
 
 #### API - login(req, res, redirectTo)
 
