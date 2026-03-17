@@ -10,7 +10,7 @@ It is based on **'keycloak-connect'** and **'express-session'**.
 - [Migration Guide: From Old to New Version](#migration-guide-from-old-to-new-version)
 - [Installation](#installation)
 - [Get Keycloak Configuration](#get-keycloak-configuration)
-- [Authorization and Login Models (Introduction)](#authorization-and-login-models-introduction)
+- [Authorization Models (Introduction)](#authorization-models-introduction)
     - [protect vs enforcer](#protect-vs-enforcer-when-to-use-each)
 - [Full Usage Example](#full-usage-example)
 - [API Documentation](#api-documentation)
@@ -424,7 +424,7 @@ app.listen(PORT, () => {
 ```
 ---
 
-## Authorization and Login Models (Introduction)
+## Authorization Models (Introduction)
 
 This package exposes two different authorization families and multiple login/token flows.
 Understanding this distinction before reading the single-method API reference helps you select the correct integration strategy.
