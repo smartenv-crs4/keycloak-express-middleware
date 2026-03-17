@@ -1017,10 +1017,8 @@ app.get('/signIn', (req, res) => {
 });
 ```
 
-Important note about `login(...)`:
-
-- `login(...)` was added as a convenience helper.
-- You can reach the same authentication result using `protectMiddleware()` and then redirect manually.
+> **Note:** `login(...)` was added as a convenience helper.
+> You can reach the same authentication result using `protectMiddleware()` and then redirect manually.
 
 Equivalent behavior with `protectMiddleware()`:
 
