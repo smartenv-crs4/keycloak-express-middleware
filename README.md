@@ -779,6 +779,17 @@ Performs permission checks via Keycloak Authorization Services (UMA 2.0).
 - With `response_mode: 'token'`, Keycloak issues token with authorization details in token claims.
 - With function conditions, callback decides allow/deny after async permission checks.
 
+**Using `conditions` as a function**
+
+When `conditions` is a function, it is invoked with:
+
+- `token`: helper object exposing permission checks (for example `token.hasPermission(...)`).
+- `req`: current Express request.
+- `callback`: function that must be called with `true` (allow) or `false` (deny).
+
+This mode is useful when authorization depends on multiple permissions or request-specific context (params, headers, tenant scope).
+Unlike `protectMiddleware` function mode, this flow is asynchronous and callback-driven.
+
 **Internal flow in practice**
 
 1. Middleware resolves static permission expression(s) or executes custom async evaluator.
@@ -796,6 +807,23 @@ Performs permission checks via Keycloak Authorization Services (UMA 2.0).
 
 ```js
 app.get('/report', keycloakInstance.enforcerMiddleware('report-resource:view'), handler);
+```
+
+**Example with `conditions` as function**
+
+```js
+app.get('/reports/:id', keycloakInstance.enforcerMiddleware((token, req, callback) => {
+    token.hasPermission(`report:${req.params.id}:read`, (canRead) => {
+        if (canRead) return callback(true);
+
+        // Fallback permission: user can still access summary-level view
+        token.hasPermission('report:summary:read', (canReadSummary) => {
+            callback(!!canReadSummary);
+        });
+    });
+}), (req, res) => {
+    res.send('Access granted by custom enforcer function');
+});
 ```
 
 ### API - customEnforcerMiddleware(customFunction, options)
