@@ -1005,6 +1005,53 @@ class keycloakExpressMiddleware {
         res.redirect(redirectUrl);
     }
 
+    /**
+     * Check whether a scope string (or scope array) contains a specific scope.
+     *
+     * Scope input can come from:
+     * - `req.kauth.grant.access_token.content.scope` (middleware/browser flow)
+     * - `tokenResponse.scope` (loginWithCredentials/loginPKCE response)
+     *
+     * @param {string|string[]} scopeInput - Scope string (space-separated) or scope array.
+     * @param {string} requiredScope - Scope to verify.
+     * @returns {boolean} True if required scope is present, false otherwise.
+     */
+    hasScope(scopeInput, requiredScope){
+        if (!requiredScope || typeof requiredScope !== 'string') return false;
+
+        const scopes = Array.isArray(scopeInput)
+            ? scopeInput
+            : String(scopeInput || '').split(' ');
+
+        return scopes
+            .map((s) => String(s || '').trim())
+            .filter(Boolean)
+            .includes(requiredScope);
+    }
+
+    /**
+     * Check whether a scope input contains all (default) or any required scopes.
+     *
+     * @param {string|string[]} scopeInput - Scope string (space-separated) or scope array.
+     * @param {string|string[]} requiredScopes - One scope or list of scopes to verify.
+     * @param {'all'|'any'} [mode='all'] - `all`: every scope required, `any`: at least one required.
+     * @returns {boolean} Scope check result according to selected mode.
+     */
+    hasScopes(scopeInput, requiredScopes, mode = 'all'){
+        const targets = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
+        const normalizedTargets = targets
+            .map((s) => String(s || '').trim())
+            .filter(Boolean);
+
+        if (normalizedTargets.length === 0) return false;
+
+        if (mode === 'any') {
+            return normalizedTargets.some((scope) => this.hasScope(scopeInput, scope));
+        }
+
+        return normalizedTargets.every((scope) => this.hasScope(scopeInput, scope));
+    }
+
 
 
 

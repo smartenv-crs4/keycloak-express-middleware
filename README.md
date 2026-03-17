@@ -35,6 +35,8 @@ It is based on **'keycloak-connect'** and **'express-session'**.
         - [API - loginWithCredentials](#api---loginwithcredentialscredentials)
         - [API - loginPKCE](#api---loginpkcecredentials)
         - [API - redirectToUserAccountConsole](#api---redirecttouseraccountconsoleres)
+        - [API - hasScope](#api---hasscopescopeinput-requiredscope)
+        - [API - hasScopes](#api---hasscopesscopeinput-requiredscopes-mode)
 - [Handling Unauthorized Access (401/403) Gracefully](#handling-unauthorized-access-401403-gracefully)
 - [Testing Documentation](#testing-documentation)
 - [License](#license)
@@ -1343,6 +1345,79 @@ Redirects user to the Keycloak account console endpoint for the configured realm
 app.get('/my-account', (req, res) => {
     keycloakInstance.redirectToUserAccountConsole(res);
 });
+```
+
+#### API - hasScope(scopeInput, requiredScope)
+
+**Signature**
+
+```js
+hasScope(scopeInput, requiredScope)
+```
+
+Checks whether one scope is present in a scope string or array.
+
+**What this API is for**
+
+- Use this helper to check scopes without rewriting parsing logic in every route.
+- Works with both middleware token claims and token endpoint responses.
+
+**Parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `scopeInput` | `string \| string[]` | Yes | Scope source (`"openid profile email"` or `['openid', 'profile']`). |
+| `requiredScope` | `string` | Yes | Scope to verify. |
+
+**Returns**
+
+- `boolean`: `true` if scope exists, otherwise `false`.
+
+**Example**
+
+```js
+const tokenScope = req?.kauth?.grant?.access_token?.content?.scope;
+const canReadEmail = keycloakInstance.hasScope(tokenScope, 'email');
+```
+
+#### API - hasScopes(scopeInput, requiredScopes, mode)
+
+**Signature**
+
+```js
+hasScopes(scopeInput, requiredScopes, mode = 'all')
+```
+
+Checks multiple scopes with `all` (default) or `any` matching mode.
+
+**Parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `scopeInput` | `string \| string[]` | Yes | Scope source (`"openid profile email"` or array). |
+| `requiredScopes` | `string \| string[]` | Yes | One or more scopes to evaluate. |
+| `mode` | `'all' \| 'any'` | No | `all` requires all scopes, `any` requires at least one. |
+
+**Returns**
+
+- `boolean`: scope validation result.
+
+**Example**
+
+```js
+const scopeString = tokenResponse.scope;
+
+const hasAll = keycloakInstance.hasScopes(
+    scopeString,
+    ['openid', 'profile'],
+    'all'
+);
+
+const hasAny = keycloakInstance.hasScopes(
+    scopeString,
+    ['email', 'offline_access'],
+    'any'
+);
 ```
 
 ---

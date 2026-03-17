@@ -437,4 +437,36 @@ describe('Middleware and Imperative Methods', function() {
       assert.strictEqual(res.redirectedTo, 'https://kc.example.com/realms/realm-a/account/');
     });
   });
+
+  describe('scope helpers', function() {
+    it('hasScope works with space-separated scope string', function() {
+      const adapter = buildAdapter();
+      const scopeString = 'openid profile email';
+
+      assert.strictEqual(adapter.hasScope(scopeString, 'email'), true);
+      assert.strictEqual(adapter.hasScope(scopeString, 'offline_access'), false);
+    });
+
+    it('hasScope works with scope array', function() {
+      const adapter = buildAdapter();
+      assert.strictEqual(adapter.hasScope(['openid', 'profile'], 'openid'), true);
+      assert.strictEqual(adapter.hasScope(['openid', 'profile'], 'email'), false);
+    });
+
+    it('hasScopes supports all mode (default)', function() {
+      const adapter = buildAdapter();
+      const scopeString = 'openid profile email';
+
+      assert.strictEqual(adapter.hasScopes(scopeString, ['openid', 'email']), true);
+      assert.strictEqual(adapter.hasScopes(scopeString, ['openid', 'offline_access']), false);
+    });
+
+    it('hasScopes supports any mode', function() {
+      const adapter = buildAdapter();
+      const scopeString = 'openid profile';
+
+      assert.strictEqual(adapter.hasScopes(scopeString, ['email', 'profile'], 'any'), true);
+      assert.strictEqual(adapter.hasScopes(scopeString, ['email', 'offline_access'], 'any'), false);
+    });
+  });
 });
