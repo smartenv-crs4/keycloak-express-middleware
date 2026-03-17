@@ -28,6 +28,7 @@ It is based on **'keycloak-connect'** and **'express-session'**.
         - [API - logoutMiddleware](#api---logoutmiddlewareredirectto)
     - [Imperative and OIDC Functions](#imperative-and-oidc-functions)
         - [login vs loginPKCE vs loginWithCredentials](#login-vs-loginpkce-vs-loginwithcredentials-when-to-use-each)
+        - [loginMiddleware vs login](#loginmiddleware-vs-login-same-goal-different-style)
         - [API - login](#api---loginreq-res-redirectto)
         - [API - logout](#api---logoutreq-res-redirectto)
         - [API - generateAuthorizationUrl](#api---generateauthorizationurloptions)
@@ -454,83 +455,6 @@ Practical examples:
 
 - `protectMiddleware('admin')`: endpoint reserved to users with admin role.
 - `enforcerMiddleware('invoice:approve')`: endpoint reserved to users with explicit permission to approve invoices.
-
-### loginMiddleware() vs login() (same goal, different style)
-
-Both APIs are designed to trigger interactive authentication and then redirect, but they are used in different coding styles.
-
-| Aspect | `loginMiddleware(redirectTo)` | `login(req, res, redirectTo)` |
-|---|---|---|
-| Type | Route middleware | Imperative helper function |
-| Where used | Directly in route declaration | Inside route handler body |
-| Handler execution | Usually not reached after middleware redirect flow | You can run custom logic before calling `login()` |
-| Best for | Standard login endpoint with minimal code | Conditional login or pre-login business logic |
-
-Use `loginMiddleware(...)` when:
-
-- You want a clean declarative route such as `app.get('/signin', keycloak.loginMiddleware('/home'))`.
-- You do not need custom pre-checks before triggering login.
-
-Use `login(...)` when:
-
-- You need to execute custom code before forcing authentication.
-- Login should happen only under specific runtime conditions.
-
-Equivalent intent examples:
-
-```js
-// Middleware style
-app.get('/signIn', keycloakInstance.loginMiddleware('/home'));
-
-// Imperative style
-app.get('/signIn', (req, res) => {
-    // Custom logic can run here first
-    keycloakInstance.login(req, res, '/home');
-});
-```
-
-Important note about `login(...)`:
-
-- `login(...)` was added as a convenience helper.
-- You can reach the same authentication result using `protectMiddleware()` and then redirect manually.
-
-Equivalent behavior with `protectMiddleware()`:
-
-```js
-app.get('/signIn', keycloakInstance.protectMiddleware(), (req, res) => {
-    res.redirect('/home');
-});
-```
-
-Use `loginPKCE(...)` when:
-
-- You already initiated PKCE with `generateAuthorizationUrl(...)`.
-- You are handling callback exchange securely using stored `codeVerifier`.
-
-What `loginPKCE(...)` actually does:
-
-- Validates required PKCE callback inputs (`code`, `redirect_uri`, `code_verifier`).
-- Calls the token endpoint with grant type `authorization_code` and PKCE verifier.
-- Returns token payload for your own persistence/session strategy.
-
-Use `loginWithCredentials(...)` when:
-
-- You need direct token endpoint operations (e.g., refresh token, client credentials, custom grant handling).
-- You need a reusable low-level method for different OAuth2 grant payloads.
-
-What `loginWithCredentials(...)` actually does:
-
-- Builds and sends a generic `application/x-www-form-urlencoded` token request.
-- Supports multiple grant models by payload (`password`, `client_credentials`, `authorization_code`, `refresh_token`).
-- Returns raw token endpoint response or throws error on failure.
-
-Recommended PKCE sequence:
-
-1. Start flow with `generateAuthorizationUrl(...)` and persist `state` + `codeVerifier` server-side.
-2. Redirect user to generated authorization URL.
-3. Receive authorization `code` in callback.
-4. Exchange using `loginPKCE(...)`.
-5. Use/persist tokens according to your session/token strategy.
 
 ---
 ## API Documentation
@@ -1058,6 +982,83 @@ Use `login(...)` when:
 
 - You want middleware-managed interactive login with redirect.
 - You are coding route-level navigation flow in Express.
+
+#### loginMiddleware() vs login() (same goal, different style)
+
+Both APIs are designed to trigger interactive authentication and then redirect, but they are used in different coding styles.
+
+| Aspect | `loginMiddleware(redirectTo)` | `login(req, res, redirectTo)` |
+|---|---|---|
+| Type | Route middleware | Imperative helper function |
+| Where used | Directly in route declaration | Inside route handler body |
+| Handler execution | Usually not reached after middleware redirect flow | You can run custom logic before calling `login()` |
+| Best for | Standard login endpoint with minimal code | Conditional login or pre-login business logic |
+
+Use `loginMiddleware(...)` when:
+
+- You want a clean declarative route such as `app.get('/signin', keycloak.loginMiddleware('/home'))`.
+- You do not need custom pre-checks before triggering login.
+
+Use `login(...)` when:
+
+- You need to execute custom code before forcing authentication.
+- Login should happen only under specific runtime conditions.
+
+Equivalent intent examples:
+
+```js
+// Middleware style
+app.get('/signIn', keycloakInstance.loginMiddleware('/home'));
+
+// Imperative style
+app.get('/signIn', (req, res) => {
+    // Custom logic can run here first
+    keycloakInstance.login(req, res, '/home');
+});
+```
+
+Important note about `login(...)`:
+
+- `login(...)` was added as a convenience helper.
+- You can reach the same authentication result using `protectMiddleware()` and then redirect manually.
+
+Equivalent behavior with `protectMiddleware()`:
+
+```js
+app.get('/signIn', keycloakInstance.protectMiddleware(), (req, res) => {
+    res.redirect('/home');
+});
+```
+
+Use `loginPKCE(...)` when:
+
+- You already initiated PKCE with `generateAuthorizationUrl(...)`.
+- You are handling callback exchange securely using stored `codeVerifier`.
+
+What `loginPKCE(...)` actually does:
+
+- Validates required PKCE callback inputs (`code`, `redirect_uri`, `code_verifier`).
+- Calls the token endpoint with grant type `authorization_code` and PKCE verifier.
+- Returns token payload for your own persistence/session strategy.
+
+Use `loginWithCredentials(...)` when:
+
+- You need direct token endpoint operations (e.g., refresh token, client credentials, custom grant handling).
+- You need a reusable low-level method for different OAuth2 grant payloads.
+
+What `loginWithCredentials(...)` actually does:
+
+- Builds and sends a generic `application/x-www-form-urlencoded` token request.
+- Supports multiple grant models by payload (`password`, `client_credentials`, `authorization_code`, `refresh_token`).
+- Returns raw token endpoint response or throws error on failure.
+
+Recommended PKCE sequence:
+
+1. Start flow with `generateAuthorizationUrl(...)` and persist `state` + `codeVerifier` server-side.
+2. Redirect user to generated authorization URL.
+3. Receive authorization `code` in callback.
+4. Exchange using `loginPKCE(...)`.
+5. Use/persist tokens according to your session/token strategy.
 
 #### API - login(req, res, redirectTo)
 
