@@ -456,6 +456,40 @@ Use `login(...)` when:
 - You want middleware-managed interactive login with redirect.
 - You are coding route-level navigation flow in Express.
 
+### loginMiddleware() vs login() (same goal, different style)
+
+Both APIs are designed to trigger interactive authentication and then redirect, but they are used in different coding styles.
+
+| Aspect | `loginMiddleware(redirectTo)` | `login(req, res, redirectTo)` |
+|---|---|---|
+| Type | Route middleware | Imperative helper function |
+| Where used | Directly in route declaration | Inside route handler body |
+| Handler execution | Usually not reached after middleware redirect flow | You can run custom logic before calling `login()` |
+| Best for | Standard login endpoint with minimal code | Conditional login or pre-login business logic |
+
+Use `loginMiddleware(...)` when:
+
+- You want a clean declarative route such as `app.get('/signin', keycloak.loginMiddleware('/home'))`.
+- You do not need custom pre-checks before triggering login.
+
+Use `login(...)` when:
+
+- You need to execute custom code before forcing authentication.
+- Login should happen only under specific runtime conditions.
+
+Equivalent intent examples:
+
+```js
+// Middleware style
+app.get('/signIn', keycloakInstance.loginMiddleware('/home'));
+
+// Imperative style
+app.get('/signIn', (req, res) => {
+    // Custom logic can run here first
+    keycloakInstance.login(req, res, '/home');
+});
+```
+
 Important note about `login(...)`:
 
 - `login(...)` was added as a convenience helper.
