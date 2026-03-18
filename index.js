@@ -28,6 +28,9 @@ class keycloakExpressMiddleware {
         // Store OIDC configuration for token endpoint helpers.
         this.clientId=keycloakConfig.resource || keycloakOptions.clientId;
         this.clientSecret=keycloakConfig.credentials?.secret || keycloakOptions.clientSecret;
+        // Outbound service-token cache and single-flight lock map.
+        this._serviceTokenCache = new Map();
+        this._serviceTokenInflight = new Map();
         if (keycloakOptions.session){
                 const memoryStore = new session.MemoryStore();
                 app.use(
@@ -997,6 +1000,259 @@ class keycloakExpressMiddleware {
             ...(resolvedClientSecret ? { client_secret: resolvedClientSecret } : {}),
             ...rest
         });
+    }
+
+    /**
+     * Obtain a client_credentials token with built-in cache and single-flight refresh.
+     *
+     * This helper is intended for service-to-service calls where this backend must call
+     * other protected APIs using a technical client identity.
+     *
+     * @param {Object} [options] - Service token options.
+     * @param {string|string[]} [options.scope] - Requested scope string or array.
+     * @param {string} [options.client_id] - Client ID override.
+     * @param {string} [options.clientId] - CamelCase alias of client_id.
+     * @param {string} [options.client_secret] - Client secret override.
+     * @param {string} [options.clientSecret] - CamelCase alias of client_secret.
+     * @param {boolean} [options.forceRefresh=false] - Force token refresh bypassing cache.
+     * @param {number} [options.minValiditySeconds=30] - Minimum required validity to reuse cached token.
+     * @param {string} [options.cacheKey] - Custom cache key (useful for multi-tenant setups).
+     * @returns {Promise<Object>} Token descriptor:
+     *   - accessToken: string
+     *   - tokenType: string (usually Bearer)
+     *   - expiresIn: number (seconds)
+     *   - expiresAt: number (unix ms)
+     *   - scope: string
+     *   - source: 'cache' | 'fresh'
+     *   - tokenResponse: raw Keycloak token payload
+     */
+    async getServiceToken(options = {}) {
+        const {
+            scope,
+            client_id,
+            clientId,
+            client_secret,
+            clientSecret,
+            forceRefresh = false,
+            minValiditySeconds = 30,
+            cacheKey,
+            ...rest
+        } = options;
+
+        const resolvedClientId = client_id || clientId || this.clientId || '';
+        const resolvedClientSecret = client_secret || clientSecret || this.clientSecret || '';
+        const scopeString = Array.isArray(scope)
+            ? scope.map((s) => String(s || '').trim()).filter(Boolean).join(' ')
+            : String(scope || '').trim();
+
+        const key = cacheKey || [resolvedClientId, scopeString].join('::');
+        const minValidityMs = Math.max(0, Number(minValiditySeconds || 0)) * 1000;
+        const now = Date.now();
+
+        const cached = this._serviceTokenCache.get(key);
+        if (!forceRefresh && cached && (cached.expiresAt - now) > minValidityMs) {
+            return {
+                accessToken: cached.tokenResponse.access_token,
+                tokenType: cached.tokenResponse.token_type || 'Bearer',
+                expiresIn: cached.tokenResponse.expires_in,
+                expiresAt: cached.expiresAt,
+                scope: cached.tokenResponse.scope || scopeString,
+                source: 'cache',
+                tokenResponse: cached.tokenResponse
+            };
+        }
+
+        if (this._serviceTokenInflight.has(key)) {
+            return this._serviceTokenInflight.get(key);
+        }
+
+        const inflight = (async () => {
+            const tokenResponse = await this.loginWithCredentials({
+                grant_type: 'client_credentials',
+                ...(scopeString ? { scope: scopeString } : {}),
+                ...(resolvedClientId ? { client_id: resolvedClientId } : {}),
+                ...(resolvedClientSecret ? { client_secret: resolvedClientSecret } : {}),
+                ...rest
+            });
+
+            if (!tokenResponse || !tokenResponse.access_token) {
+                throw new Error('getServiceToken failed: token endpoint did not return access_token');
+            }
+
+            const expiresIn = Number(tokenResponse.expires_in || 0);
+            const expiresAt = Date.now() + (expiresIn * 1000);
+            this._serviceTokenCache.set(key, { tokenResponse, expiresAt });
+
+            return {
+                accessToken: tokenResponse.access_token,
+                tokenType: tokenResponse.token_type || 'Bearer',
+                expiresIn,
+                expiresAt,
+                scope: tokenResponse.scope || scopeString,
+                source: 'fresh',
+                tokenResponse
+            };
+        })();
+
+        this._serviceTokenInflight.set(key, inflight);
+
+        try {
+            return await inflight;
+        } finally {
+            this._serviceTokenInflight.delete(key);
+        }
+    }
+
+    /**
+     * Call an external protected API with optional automatic service-token injection.
+     *
+     * Auth modes:
+     * - service: obtains token via getServiceToken and sets Authorization header.
+     * - user: uses provided userToken and sets Authorization header.
+     * - passthrough: leaves provided headers unchanged.
+     * - none: no authorization handling.
+     *
+     * In service mode, the helper retries once with a forced token refresh on HTTP 401.
+     *
+     * @param {Object} options - HTTP invocation options.
+     * @param {string} options.url - Target URL.
+     * @param {string} [options.method='GET'] - HTTP method.
+     * @param {Object} [options.headers] - Request headers.
+     * @param {*} [options.body] - Raw request body.
+     * @param {Object|Array} [options.json] - JSON body (serialized automatically).
+     * @param {'service'|'user'|'passthrough'|'none'} [options.authMode='service'] - Auth handling mode.
+     * @param {string} [options.userToken] - User token for authMode='user'.
+     * @param {Object} [options.serviceTokenOptions] - Options forwarded to getServiceToken().
+     * @param {boolean} [options.retryOnAuthError=true] - Retry once on 401 in service mode.
+     * @param {number} [options.timeoutMs=10000] - Request timeout in milliseconds.
+     * @returns {Promise<Object>} Normalized HTTP response:
+     *   - ok, status, statusText
+     *   - headers (plain object)
+     *   - data (parsed response body)
+     *   - auth (metadata)
+     */
+    async callProtectedApi(options = {}) {
+        const {
+            url,
+            method = 'GET',
+            headers = {},
+            body,
+            json,
+            authMode = 'service',
+            userToken,
+            serviceTokenOptions = {},
+            retryOnAuthError = true,
+            timeoutMs = 10000,
+            ...rest
+        } = options;
+
+        if (!url) {
+            throw new Error('callProtectedApi requires "url"');
+        }
+
+        const fetchFn = (typeof globalThis.fetch === 'function') ? globalThis.fetch.bind(globalThis) : null;
+        if (!fetchFn) {
+            throw new Error('callProtectedApi requires global fetch (Node 18+)');
+        }
+
+        const buildHeaders = (authorizationHeader) => {
+            const finalHeaders = { ...headers };
+            if (authorizationHeader && !finalHeaders.Authorization && !finalHeaders.authorization) {
+                finalHeaders.Authorization = authorizationHeader;
+            }
+            if (json !== undefined && !finalHeaders['content-type'] && !finalHeaders['Content-Type']) {
+                finalHeaders['content-type'] = 'application/json';
+            }
+            return finalHeaders;
+        };
+
+        const parseResponseData = async (response) => {
+            const contentType = response.headers?.get?.('content-type') || '';
+            const text = await response.text();
+
+            if (!text) return null;
+            if (contentType.includes('application/json')) {
+                try {
+                    return JSON.parse(text);
+                } catch (_) {
+                    return text;
+                }
+            }
+
+            try {
+                return JSON.parse(text);
+            } catch (_) {
+                return text;
+            }
+        };
+
+        const runRequest = async (authorizationHeader) => {
+            const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const timeout = controller
+                ? setTimeout(() => controller.abort(), Math.max(0, Number(timeoutMs || 0)))
+                : null;
+
+            try {
+                const response = await fetchFn(url, {
+                    method,
+                    headers: buildHeaders(authorizationHeader),
+                    body: json !== undefined ? JSON.stringify(json) : body,
+                    ...(controller ? { signal: controller.signal } : {}),
+                    ...rest
+                });
+
+                const responseHeaders = {};
+                if (response.headers && typeof response.headers.forEach === 'function') {
+                    response.headers.forEach((value, key) => {
+                        responseHeaders[key] = value;
+                    });
+                }
+
+                return {
+                    ok: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: responseHeaders,
+                    data: await parseResponseData(response)
+                };
+            } finally {
+                if (timeout) clearTimeout(timeout);
+            }
+        };
+
+        let tokenMeta = null;
+        let authorizationHeader = null;
+
+        if (authMode === 'service') {
+            tokenMeta = await this.getServiceToken(serviceTokenOptions);
+            authorizationHeader = `${tokenMeta.tokenType || 'Bearer'} ${tokenMeta.accessToken}`;
+        } else if (authMode === 'user') {
+            if (!userToken) {
+                throw new Error('callProtectedApi with authMode="user" requires "userToken"');
+            }
+            authorizationHeader = `Bearer ${userToken}`;
+        } else if (authMode !== 'passthrough' && authMode !== 'none') {
+            throw new Error('callProtectedApi received unsupported authMode');
+        }
+
+        let result = await runRequest(authorizationHeader);
+        let retriedWithFreshToken = false;
+
+        if (authMode === 'service' && retryOnAuthError && result.status === 401) {
+            tokenMeta = await this.getServiceToken({ ...serviceTokenOptions, forceRefresh: true });
+            authorizationHeader = `${tokenMeta.tokenType || 'Bearer'} ${tokenMeta.accessToken}`;
+            result = await runRequest(authorizationHeader);
+            retriedWithFreshToken = true;
+        }
+
+        return {
+            ...result,
+            auth: {
+                mode: authMode,
+                tokenSource: tokenMeta?.source,
+                retriedWithFreshToken
+            }
+        };
     }
 
     redirectToUserAccountConsole(res){

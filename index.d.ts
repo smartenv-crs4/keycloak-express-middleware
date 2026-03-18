@@ -31,6 +31,57 @@ declare module 'keycloak-express-middleware' {
    */
   type ScopeMode = 'all' | 'any';
 
+  type OutboundAuthMode = 'service' | 'user' | 'passthrough' | 'none';
+
+  interface ServiceTokenOptions {
+    scope?: string | string[];
+    client_id?: string;
+    clientId?: string;
+    client_secret?: string;
+    clientSecret?: string;
+    forceRefresh?: boolean;
+    minValiditySeconds?: number;
+    cacheKey?: string;
+    [key: string]: any;
+  }
+
+  interface ServiceTokenResult {
+    accessToken: string;
+    tokenType: string;
+    expiresIn: number;
+    expiresAt: number;
+    scope?: string;
+    source: 'cache' | 'fresh';
+    tokenResponse: any;
+  }
+
+  interface CallProtectedApiOptions {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: any;
+    json?: any;
+    authMode?: OutboundAuthMode;
+    userToken?: string;
+    serviceTokenOptions?: ServiceTokenOptions;
+    retryOnAuthError?: boolean;
+    timeoutMs?: number;
+    [key: string]: any;
+  }
+
+  interface CallProtectedApiResult {
+    ok: boolean;
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    data: any;
+    auth: {
+      mode: OutboundAuthMode;
+      tokenSource?: 'cache' | 'fresh';
+      retriedWithFreshToken: boolean;
+    };
+  }
+
   /**
    * Main Keycloak class constructor options
    */
@@ -97,6 +148,10 @@ declare module 'keycloak-express-middleware' {
     hasScopeFromRequest(req: Request, requiredScope: string): boolean;
     hasScopesFromRequest(req: Request, requiredScopes: string[], mode?: ScopeMode): boolean;
     requireScopes(requiredScopes: string[], mode?: ScopeMode): (req: Request, res: Response, next: NextFunction) => void;
+
+    // Service-to-service helpers
+    getServiceToken(options?: ServiceTokenOptions): Promise<ServiceTokenResult>;
+    callProtectedApi(options: CallProtectedApiOptions): Promise<CallProtectedApiResult>;
   }
 
   export default Keycloak;

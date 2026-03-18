@@ -249,7 +249,14 @@ app.get('/api/user/profile',
 
 ## Recipe 5 - Service-to-Service Token Flow with Auto-Refresh
 
-Backend service that fetches a token, uses it to call protected APIs, and auto-refreshes before expiry.
+Backend service that calls protected APIs using official helpers `getServiceToken()` and `callProtectedApi()`.
+
+The helpers already provide:
+
+- Technical token retrieval (`client_credentials`)
+- In-memory token cache
+- Automatic forced refresh + retry once on 401 (service mode)
+- Optional per-tenant cache partitioning (`cacheKey`)
 
 ```js
 const keycloakAdapter = require('keycloak-express-middleware');
@@ -263,45 +270,67 @@ const keycloakInstance = new keycloakAdapter(app, {
     credentials: { secret: process.env.KC_CLIENT_SECRET }
 });
 
-// In-memory token cache for service account
-let serviceTokenCache = null;
-
-async function getServiceToken() {
-    // Return cached token if still valid (with 30s buffer)
-    if (serviceTokenCache && serviceTokenCache.expiresAt > Date.now() + 30000) {
-        return serviceTokenCache.access_token;
-    }
-
-    // Fetch new token via client_credentials
-    const tokens = await keycloakInstance.loginWithCredentials({
-        grant_type: 'client_credentials',
-        scope: 'openid'
+// Optional: inspect token source (fresh/cache)
+app.get('/internal/token-metadata', async (req, res) => {
+    const tokenInfo = await keycloakInstance.getServiceToken({
+        scope: 'internal.read',
+        minValiditySeconds: 30,
+        cacheKey: 'internal-api/default'
     });
 
-    serviceTokenCache = {
-        access_token: tokens.access_token,
-        expiresAt: Date.now() + (tokens.expires_in * 1000)
-    };
+    res.json({
+        source: tokenInfo.source,
+        expiresAt: tokenInfo.expiresAt,
+        scope: tokenInfo.scope
+    });
+});
 
-    return tokens.access_token;
-}
-
-// Route that calls another protected service on behalf of a service account
+// Route that calls another protected service in service mode
 app.get('/internal/data', async (req, res) => {
     try {
-        const token = await getServiceToken();
-
-        const response = await fetch('https://internal-api.example.com/data', {
-            headers: { 'Authorization': `Bearer ${token}` }
+        const upstream = await keycloakInstance.callProtectedApi({
+            url: 'https://internal-api.example.com/data',
+            method: 'GET',
+            authMode: 'service',
+            serviceTokenOptions: {
+                scope: 'internal.read'
+            },
+            timeoutMs: 8000
         });
 
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-        const data = await response.json();
-        res.json(data);
+        if (!upstream.ok) {
+            return res.status(upstream.status).json({
+                error: 'Upstream call failed',
+                details: upstream.data,
+                auth: upstream.auth
+            });
+        }
+
+        res.json({
+            data: upstream.data,
+            auth: upstream.auth
+        });
     } catch (err) {
         console.error('Service call failed:', err.message);
         res.status(503).json({ error: 'Service unavailable' });
     }
+});
+
+// Route that forwards user identity instead of service identity
+app.get('/internal/me', async (req, res) => {
+    const userToken = req?.kauth?.grant?.access_token?.token;
+
+    if (!userToken) {
+        return res.status(401).json({ error: 'Missing user token in request context' });
+    }
+
+    const upstream = await keycloakInstance.callProtectedApi({
+        url: 'https://profile-api.example.com/me',
+        authMode: 'user',
+        userToken
+    });
+
+    res.status(upstream.status).json(upstream.data);
 });
 ```
 

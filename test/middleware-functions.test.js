@@ -609,4 +609,144 @@ describe('Middleware and Imperative Methods', function() {
       assert.strictEqual(payload.mode, 'all');
     });
   });
+
+  describe('service-to-service helpers', function() {
+    it('getServiceToken returns cached token when still valid', async function() {
+      const adapter = buildAdapter();
+      let calls = 0;
+
+      adapter.loginWithCredentials = async () => {
+        calls += 1;
+        return {
+          access_token: 'svc-token-1',
+          token_type: 'Bearer',
+          expires_in: 60,
+          scope: 'openid'
+        };
+      };
+
+      const first = await adapter.getServiceToken({ scope: 'openid' });
+      const second = await adapter.getServiceToken({ scope: 'openid' });
+
+      assert.strictEqual(first.accessToken, 'svc-token-1');
+      assert.strictEqual(second.accessToken, 'svc-token-1');
+      assert.strictEqual(first.source, 'fresh');
+      assert.strictEqual(second.source, 'cache');
+      assert.strictEqual(calls, 1, 'token endpoint should be called once due to cache');
+    });
+
+    it('getServiceToken deduplicates concurrent refresh calls (single-flight)', async function() {
+      const adapter = buildAdapter();
+      let calls = 0;
+
+      adapter.loginWithCredentials = async () => {
+        calls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return {
+          access_token: 'svc-token-concurrent',
+          token_type: 'Bearer',
+          expires_in: 60
+        };
+      };
+
+      const [a, b] = await Promise.all([
+        adapter.getServiceToken({ scope: 'profile', forceRefresh: true }),
+        adapter.getServiceToken({ scope: 'profile', forceRefresh: true })
+      ]);
+
+      assert.strictEqual(a.accessToken, 'svc-token-concurrent');
+      assert.strictEqual(b.accessToken, 'svc-token-concurrent');
+      assert.strictEqual(calls, 1, 'single-flight should collapse concurrent refreshes');
+    });
+
+    it('callProtectedApi uses service token and retries once on 401', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+
+      let tokenCalls = 0;
+      let fetchCalls = 0;
+      adapter.getServiceToken = async ({ forceRefresh } = {}) => {
+        tokenCalls += 1;
+        return {
+          accessToken: forceRefresh ? 'fresh-token' : 'cached-token',
+          tokenType: 'Bearer',
+          source: forceRefresh ? 'fresh' : 'cache'
+        };
+      };
+
+      global.fetch = async (_url, options) => {
+        fetchCalls += 1;
+
+        if (fetchCalls === 1) {
+          assert.strictEqual(options.headers.Authorization, 'Bearer cached-token');
+          return {
+            ok: false,
+            status: 401,
+            statusText: 'Unauthorized',
+            headers: { forEach: () => {}, get: () => 'application/json' },
+            text: async () => JSON.stringify({ error: 'invalid_token' })
+          };
+        }
+
+        assert.strictEqual(options.headers.Authorization, 'Bearer fresh-token');
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          headers: {
+            forEach: (cb) => cb('application/json', 'content-type'),
+            get: () => 'application/json'
+          },
+          text: async () => JSON.stringify({ result: 'ok' })
+        };
+      };
+
+      try {
+        const response = await adapter.callProtectedApi({
+          url: 'https://api.example.com/resource',
+          authMode: 'service'
+        });
+
+        assert.strictEqual(response.ok, true);
+        assert.strictEqual(response.status, 200);
+        assert.strictEqual(response.data.result, 'ok');
+        assert.strictEqual(tokenCalls, 2, 'should force refresh token once after 401');
+        assert.strictEqual(response.auth.retriedWithFreshToken, true);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('callProtectedApi supports user mode', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+
+      global.fetch = async (_url, options) => {
+        assert.strictEqual(options.headers.Authorization, 'Bearer user-token-123');
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          headers: {
+            forEach: (cb) => cb('application/json', 'content-type'),
+            get: () => 'application/json'
+          },
+          text: async () => JSON.stringify({ user: 'ok' })
+        };
+      };
+
+      try {
+        const response = await adapter.callProtectedApi({
+          url: 'https://api.example.com/user',
+          authMode: 'user',
+          userToken: 'user-token-123'
+        });
+
+        assert.strictEqual(response.ok, true);
+        assert.strictEqual(response.auth.mode, 'user');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
 });

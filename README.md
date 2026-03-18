@@ -43,6 +43,8 @@ It is based on **'keycloak-connect'** and **'express-session'**.
         - [API - hasScopeFromRequest](#api---hasscopefromrequestreq-requiredscope)
         - [API - hasScopesFromRequest](#api---hasscopesfromrequestreq-requiredscopes-mode)
         - [API - requireScopes](#api---requirescopesrequiredscopes-mode)
+        - [API - getServiceToken](#api---getservicetokenoptions)
+        - [API - callProtectedApi](#api---callprotectedapioptions)
 - [Recipes and Patterns](docs/recipes.md)
 - [Handling Unauthorized Access (401/403) Gracefully](#handling-unauthorized-access-401403-gracefully)
 - [Testing Documentation](#testing-documentation)
@@ -2278,6 +2280,189 @@ app.get(
     requireScopesWithLogging(['premium'], 'all'),
     (req, res) => res.send('Premium feature accessed')
 );
+```
+
+#### API - getServiceToken(options)
+
+**Signature**
+
+```js
+async getServiceToken(options = {})
+```
+
+Obtains a `client_credentials` token with built-in in-memory cache and single-flight refresh.
+
+Use this helper when your backend must call protected APIs of other services using a technical service account.
+
+**Key behavior**
+
+- Reuses cached token while validity is above `minValiditySeconds`.
+- Performs one token refresh for concurrent callers (single-flight).
+- Supports per-scope/per-client cache partitioning and optional custom `cacheKey`.
+
+**Main options**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `scope` | `string \| string[]` | No | Requested scope(s). |
+| `client_id` / `clientId` | `string` | No | Client ID override. |
+| `client_secret` / `clientSecret` | `string` | No | Client secret override. |
+| `forceRefresh` | `boolean` | No | If `true`, bypasses cache and requests a new token. |
+| `minValiditySeconds` | `number` | No | Minimum required remaining validity to reuse cached token. Default: `30`. |
+| `cacheKey` | `string` | No | Custom cache partition key (multi-tenant/multi-client scenarios). |
+
+**Returns**
+
+```js
+{
+  accessToken: string,
+  tokenType: string,
+  expiresIn: number,
+  expiresAt: number,
+  scope: string,
+  source: 'cache' | 'fresh',
+  tokenResponse: object
+}
+```
+
+**Example - Basic service token retrieval**
+
+```js
+const serviceToken = await keycloakInstance.getServiceToken({
+    scope: 'openid profile'
+});
+
+console.log(serviceToken.source); // 'fresh' on first call, then 'cache'
+console.log(serviceToken.accessToken); // JWT Bearer token
+```
+
+**Example - Force refresh token**
+
+```js
+const refreshedToken = await keycloakInstance.getServiceToken({
+    scope: 'openid',
+    forceRefresh: true
+});
+```
+
+**Example - Multi-tenant cache partition**
+
+```js
+const tenantToken = await keycloakInstance.getServiceToken({
+    scope: 'openid',
+    cacheKey: `tenant:${tenantId}:service-a`
+});
+```
+
+#### API - callProtectedApi(options)
+
+**Signature**
+
+```js
+async callProtectedApi(options)
+```
+
+Performs an outbound HTTP call with optional automatic authorization handling.
+
+**Auth modes**
+
+- `service` (default): obtains token via `getServiceToken()` and injects `Authorization` header.
+- `user`: uses `userToken` and injects `Authorization` header.
+- `passthrough`: does not modify auth headers (uses headers as provided).
+- `none`: no auth processing.
+
+In `service` mode, if target API responds with `401`, the helper refreshes token once and retries once.
+
+**Main options**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `url` | `string` | Yes | Target URL. |
+| `method` | `string` | No | HTTP method. Default: `GET`. |
+| `headers` | `Object` | No | Request headers. |
+| `body` | `any` | No | Raw request body. |
+| `json` | `Object \| Array` | No | JSON body (auto-serialized and content-type set). |
+| `authMode` | `'service' \| 'user' \| 'passthrough' \| 'none'` | No | Auth strategy. |
+| `userToken` | `string` | No | Required when `authMode='user'`. |
+| `serviceTokenOptions` | `Object` | No | Forwarded to `getServiceToken()`. |
+| `retryOnAuthError` | `boolean` | No | Retry once on `401` in service mode. Default: `true`. |
+| `timeoutMs` | `number` | No | Request timeout. Default: `10000`. |
+
+**Returns**
+
+```js
+{
+  ok: boolean,
+  status: number,
+  statusText: string,
+  headers: object,
+  data: any,
+  auth: {
+    mode: 'service' | 'user' | 'passthrough' | 'none',
+    tokenSource?: 'cache' | 'fresh',
+    retriedWithFreshToken: boolean
+  }
+}
+```
+
+**Example - Service-to-service GET**
+
+```js
+const response = await keycloakInstance.callProtectedApi({
+    url: 'https://inventory.internal/api/items',
+    authMode: 'service',
+    serviceTokenOptions: { scope: 'inventory.read' }
+});
+
+if (!response.ok) {
+    return res.status(response.status).json({ error: response.data });
+}
+
+res.json(response.data);
+```
+
+**Example - Service-to-service POST with JSON body**
+
+```js
+const createResp = await keycloakInstance.callProtectedApi({
+    url: 'https://orders.internal/api/orders',
+    method: 'POST',
+    authMode: 'service',
+    serviceTokenOptions: { scope: 'orders.write' },
+    json: {
+        customerId: 'c-123',
+        lines: [{ sku: 'A-01', qty: 2 }]
+    }
+});
+```
+
+**Example - On-behalf-of user token forwarding**
+
+```js
+const userAccessToken = req.kauth.grant.access_token.token;
+
+const upstream = await keycloakInstance.callProtectedApi({
+    url: 'https://profile.internal/api/me',
+    authMode: 'user',
+    userToken: userAccessToken
+});
+
+res.status(upstream.status).json(upstream.data);
+```
+
+**Example - Passthrough mode (keep caller Authorization header as-is)**
+
+```js
+const passthrough = await keycloakInstance.callProtectedApi({
+    url: 'https://gateway.internal/api/audit',
+    method: 'POST',
+    authMode: 'passthrough',
+    headers: {
+        Authorization: req.headers.authorization,
+        'x-correlation-id': req.headers['x-correlation-id']
+    },
+    json: { event: 'download', itemId: req.params.id }
+});
 ```
 
 ---
