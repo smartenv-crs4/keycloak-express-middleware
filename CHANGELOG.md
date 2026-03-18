@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.3.0] - 2026-03-18
+
+### Added
+- **Outbound Service Helpers** for service-to-service and user-context API calls:
+  - `getServiceToken(options)` — Client Credentials token helper with in-memory cache, single-flight refresh, and configurable validity window
+  - `callProtectedApi(options)` — Outbound HTTP helper with auth modes (`service`, `user`, `passthrough`, `none`), normalized response shape, timeout support, and automatic one-time retry on `401` in service mode
+- **TypeScript coverage** for outbound helpers:
+  - `ServiceTokenOptions`, `ServiceTokenResult`
+  - `CallProtectedApiOptions`, `CallProtectedApiResult`
+
+### Documentation
+- Expanded README API reference with complete sections for:
+  - `getServiceToken(options)`
+  - `callProtectedApi(options)`
+- Added practical service-integration examples and cross-links to recipes
+- Updated `docs/recipes.md` Recipe 5 with production-style outbound flow, fallback mapping, and error shaping patterns
+
+### Tests
+- Added unit tests for outbound helper behavior:
+  - token cache reuse
+  - single-flight concurrency behavior
+  - `401` refresh+retry path in `service` auth mode
+  - user-token auth mode behavior
+
 ## [6.2.0] - 2026-03-18
 
 ### Added
