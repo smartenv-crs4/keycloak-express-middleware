@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.3.1] - 2026-03-18
+
+### Changed
+- npm package content policy updated to include `test/` files in published tarball.
+- `package.json` `files` whitelist now explicitly includes `test/**`, so test assets are available both via repository clone and `npm install`.
+
 ## [6.3.0] - 2026-03-18
 
 ### Added

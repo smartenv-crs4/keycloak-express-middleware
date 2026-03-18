@@ -1,6 +1,6 @@
 {
   "name": "keycloak-express-middleware",
-  "version": "6.3.0",
+  "version": "6.3.1",
   "description": "Adapter API to integrate Node.js (Express) applications with Keycloak. Provides middleware for authentication, authorization, token validation, and route protection via OpenID Connect.",
   "main": "index.js",
   "typings": "index.d.ts",
@@ -21,7 +21,15 @@
     "OIDC_INTEGRATION_GUIDE.md",
     "config.js",
     "config/default.json",
-    "docs/**"
+    "docs/**",
+    "test/.mocharc.json",
+    "test/*.test.js",
+    "test/package.json",
+    "test/package-lock.json",
+    "test/config/**",
+    "test/helpers/**",
+    "test/support/**",
+    "test/docker-keycloak/**"
   ],
   "scripts": {
     "test": "npm --prefix test install && npm --prefix test run setup-keycloak && NODE_PATH=./test/node_modules npm --prefix test test",
