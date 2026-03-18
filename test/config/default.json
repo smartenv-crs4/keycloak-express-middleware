@@ -10,6 +10,7 @@
       "realm": "express-middleware-test",
       "clientId": "express-middleware-test-client",
       "clientSecret": "test-client-secret",
-      "testUser": "test-user"    }
+      "testUser": "test-user"
+    }
   }
 }

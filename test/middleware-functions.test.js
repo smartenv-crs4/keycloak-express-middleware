@@ -749,4 +749,333 @@ describe('Middleware and Imperative Methods', function() {
       }
     });
   });
+
+    // ── getServiceToken edge cases ──────────────────────────────────────────
+
+    it('getServiceToken forces fresh fetch when token is within minValiditySeconds', async function() {
+      const adapter = buildAdapter();
+      let calls = 0;
+
+      adapter.loginWithCredentials = async () => {
+        calls += 1;
+        return {
+          access_token: `svc-token-${calls}`,
+          token_type: 'Bearer',
+          expires_in: 10,   // expires in 10 s
+          scope: 'openid'
+        };
+      };
+
+      // First fetch — stores token with ~10 s TTL
+      await adapter.getServiceToken({ scope: 'openid' });
+
+      // Request with minValiditySeconds=20 → cached token expires too soon → must refresh
+      const result = await adapter.getServiceToken({ scope: 'openid', minValiditySeconds: 20 });
+
+      assert.strictEqual(result.source, 'fresh');
+      assert.strictEqual(calls, 2, 'should refetch when token expires within minValiditySeconds');
+    });
+
+    it('getServiceToken uses custom cacheKey independently from default key', async function() {
+      const adapter = buildAdapter();
+      let calls = 0;
+
+      adapter.loginWithCredentials = async () => {
+        calls += 1;
+        return { access_token: `token-${calls}`, token_type: 'Bearer', expires_in: 300 };
+      };
+
+      const a = await adapter.getServiceToken({ scope: 'openid', cacheKey: 'my-key' });
+      const b = await adapter.getServiceToken({ scope: 'openid', cacheKey: 'my-key' }); // same key → cache
+      const c = await adapter.getServiceToken({ scope: 'openid' }); // default key → fresh
+
+      assert.strictEqual(a.source, 'fresh');
+      assert.strictEqual(b.source, 'cache');
+      assert.strictEqual(c.source, 'fresh');
+      assert.strictEqual(calls, 2);
+    });
+
+    it('getServiceToken joins scope array into space-separated string', async function() {
+      const adapter = buildAdapter();
+      let capturedScope;
+
+      adapter.loginWithCredentials = async (creds) => {
+        capturedScope = creds.scope;
+        return { access_token: 'tok', token_type: 'Bearer', expires_in: 300, scope: creds.scope };
+      };
+
+      await adapter.getServiceToken({ scope: ['openid', 'profile', 'email'] });
+      assert.strictEqual(capturedScope, 'openid profile email');
+    });
+
+    it('getServiceToken isolates cache entries per scope', async function() {
+      const adapter = buildAdapter();
+      let calls = 0;
+
+      adapter.loginWithCredentials = async (creds) => {
+        calls += 1;
+        return { access_token: `tok-${creds.scope}`, token_type: 'Bearer', expires_in: 300, scope: creds.scope };
+      };
+
+      const a = await adapter.getServiceToken({ scope: 'openid' });
+      const b = await adapter.getServiceToken({ scope: 'openid profile' });
+      const c = await adapter.getServiceToken({ scope: 'openid' }); // cache hit
+
+      assert.strictEqual(a.accessToken, 'tok-openid');
+      assert.strictEqual(b.accessToken, 'tok-openid profile');
+      assert.strictEqual(c.source, 'cache');
+      assert.strictEqual(calls, 2);
+    });
+
+    it('getServiceToken throws when token endpoint returns no access_token', async function() {
+      const adapter = buildAdapter();
+
+      adapter.loginWithCredentials = async () => ({ token_type: 'Bearer', expires_in: 300 });
+
+      await assert.rejects(
+        () => adapter.getServiceToken({ scope: 'openid' }),
+        /access_token/
+      );
+    });
+
+    // ── callProtectedApi edge cases ─────────────────────────────────────────
+
+    it('callProtectedApi throws when url is missing', async function() {
+      const adapter = buildAdapter();
+
+      await assert.rejects(
+        () => adapter.callProtectedApi({ authMode: 'none' }),
+        /url/i
+      );
+    });
+
+    it('callProtectedApi passthrough mode preserves existing Authorization header', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+      let capturedAuth;
+
+      global.fetch = async (_url, options) => {
+        capturedAuth = options.headers.Authorization;
+        return {
+          ok: true, status: 200, statusText: 'OK',
+          headers: { forEach: () => {}, get: () => null },
+          text: async () => ''
+        };
+      };
+
+      try {
+        await adapter.callProtectedApi({
+          url: 'https://api.example.com/data',
+          authMode: 'passthrough',
+          headers: { Authorization: 'Bearer my-existing-token' }
+        });
+        assert.strictEqual(capturedAuth, 'Bearer my-existing-token');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('callProtectedApi none mode sends no Authorization header', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+      let capturedHeaders;
+
+      global.fetch = async (_url, options) => {
+        capturedHeaders = options.headers;
+        return {
+          ok: true, status: 200, statusText: 'OK',
+          headers: { forEach: () => {}, get: () => null },
+          text: async () => ''
+        };
+      };
+
+      try {
+        await adapter.callProtectedApi({ url: 'https://api.example.com/data', authMode: 'none' });
+        assert.strictEqual(capturedHeaders.Authorization, undefined);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('callProtectedApi throws when authMode=user without userToken', async function() {
+      const adapter = buildAdapter();
+
+      await assert.rejects(
+        () => adapter.callProtectedApi({ url: 'https://api.example.com/data', authMode: 'user' }),
+        /userToken/i
+      );
+    });
+
+    it('callProtectedApi throws on unsupported authMode', async function() {
+      const adapter = buildAdapter();
+
+      await assert.rejects(
+        () => adapter.callProtectedApi({ url: 'https://api.example.com/data', authMode: 'magic' }),
+        /unsupported authMode/i
+      );
+    });
+
+    it('callProtectedApi serializes json body and sets content-type', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+      let capturedBody, capturedContentType;
+
+      global.fetch = async (_url, options) => {
+        capturedBody = options.body;
+        capturedContentType = options.headers['content-type'];
+        return {
+          ok: true, status: 200, statusText: 'OK',
+          headers: { forEach: () => {}, get: () => 'application/json' },
+          text: async () => JSON.stringify({ ok: true })
+        };
+      };
+
+      try {
+        await adapter.callProtectedApi({
+          url: 'https://api.example.com/data',
+          method: 'POST',
+          authMode: 'none',
+          json: { foo: 'bar', num: 42 }
+        });
+        assert.strictEqual(capturedBody, JSON.stringify({ foo: 'bar', num: 42 }));
+        assert.strictEqual(capturedContentType, 'application/json');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('callProtectedApi skips retry when retryOnAuthError=false', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+      let fetchCalls = 0;
+      let getTokenCalls = 0;
+
+      adapter.getServiceToken = async () => {
+        getTokenCalls += 1;
+        return { accessToken: 'tok', tokenType: 'Bearer', source: 'cache' };
+      };
+
+      global.fetch = async () => {
+        fetchCalls += 1;
+        return {
+          ok: false, status: 401, statusText: 'Unauthorized',
+          headers: { forEach: () => {}, get: () => null },
+          text: async () => 'Unauthorized'
+        };
+      };
+
+      try {
+        const result = await adapter.callProtectedApi({
+          url: 'https://api.example.com/data',
+          authMode: 'service',
+          retryOnAuthError: false
+        });
+        assert.strictEqual(result.status, 401);
+        assert.strictEqual(fetchCalls, 1, 'should not retry');
+        assert.strictEqual(result.auth.retriedWithFreshToken, false);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('callProtectedApi aborts request on timeout', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+
+      global.fetch = async (_url, options) => {
+        return new Promise((_resolve, reject) => {
+          if (options.signal) {
+            options.signal.addEventListener('abort', () => {
+              const err = new Error('The operation was aborted');
+              err.name = 'AbortError';
+              reject(err);
+            });
+          }
+          // Never resolve — waits for abort
+        });
+      };
+
+      try {
+        await assert.rejects(
+          () => adapter.callProtectedApi({
+            url: 'https://api.example.com/slow',
+            authMode: 'none',
+            timeoutMs: 30
+          }),
+          (err) => err.name === 'AbortError' || /aborted/i.test(err.message)
+        );
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('callProtectedApi returns text data for non-JSON response', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+
+      global.fetch = async () => ({
+        ok: true, status: 200, statusText: 'OK',
+        headers: { forEach: () => {}, get: () => 'text/plain' },
+        text: async () => 'plain text response'
+      });
+
+      try {
+        const result = await adapter.callProtectedApi({
+          url: 'https://api.example.com/text',
+          authMode: 'none'
+        });
+        assert.strictEqual(result.data, 'plain text response');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('callProtectedApi returns null data for empty body', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+
+      global.fetch = async () => ({
+        ok: true, status: 204, statusText: 'No Content',
+        headers: { forEach: () => {}, get: () => null },
+        text: async () => ''
+      });
+
+      try {
+        const result = await adapter.callProtectedApi({
+          url: 'https://api.example.com/delete',
+          method: 'DELETE',
+          authMode: 'none'
+        });
+        assert.strictEqual(result.status, 204);
+        assert.strictEqual(result.data, null);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('callProtectedApi auth.retriedWithFreshToken is false on first-attempt success', async function() {
+      const adapter = buildAdapter();
+      const originalFetch = global.fetch;
+
+      adapter.getServiceToken = async () => ({
+        accessToken: 'tok', tokenType: 'Bearer', source: 'cache'
+      });
+
+      global.fetch = async () => ({
+        ok: true, status: 200, statusText: 'OK',
+        headers: { forEach: () => {}, get: () => 'application/json' },
+        text: async () => JSON.stringify({ data: 1 })
+      });
+
+      try {
+        const result = await adapter.callProtectedApi({
+          url: 'https://api.example.com/data',
+          authMode: 'service'
+        });
+        assert.strictEqual(result.auth.retriedWithFreshToken, false);
+        assert.strictEqual(result.auth.mode, 'service');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
 });

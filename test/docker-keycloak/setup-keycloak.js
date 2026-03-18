@@ -521,11 +521,11 @@ async function main() {
     
     log('\n✓ Setup complete!\n', 'green');
 
-    // === CLIENT SECRET RETRIEVAL INSTRUCTION ===
-    log('4. Copy the Secret value and update test/config/secrets.json and test/config/default.json', 'yellow');
-    log('   ("clientSecret" field under the "test" keycloak block)', 'yellow');
-    log('5. Re-run npm test', 'yellow');
-    log('\nIf you want to automate this, add a script to fetch the secret via Keycloak Admin API after deployment.\n', 'yellow');
+    // Test config bootstrap already creates local config files and test setup recreates realm/client.
+    log('4. Run npm test to bootstrap test config and sync realm/client/user automatically.', 'yellow');
+    log('   (test/helpers/ensure-test-config.js + test/helpers/keycloak-setup.js)', 'yellow');
+    log('5. Only update test/config/secrets.json manually if you intentionally changed credentials.', 'yellow');
+    log('   (adminPassword, clientSecret, testPassword)', 'yellow');
     
   } catch (err) {
     log(`\nSetup failed: ${err.message}\n`, 'red');

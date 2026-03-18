@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.3.3] - 2026-03-18
+
+### Added
+- Expanded test coverage for outbound helper APIs:
+  - `getServiceToken()` edge cases (`minValiditySeconds`, custom `cacheKey`, scope array normalization, per-scope cache isolation, missing `access_token` handling)
+  - `callProtectedApi()` edge cases (`passthrough`/`none` modes, invalid inputs, JSON body serialization, timeout abort, non-JSON and empty response handling, retry toggle behavior)
+- Added integration coverage for:
+  - service token retrieval and cache behavior against configured Keycloak test realm
+  - outbound helper call behavior in user mode and none mode
+  - token-claim decoding flow in `getTokenClaims`
+- Added OIDC negative-path tests for non-JSON token-endpoint errors and failed PKCE token exchange responses.
+
+### Changed
+- Updated deploy setup output in `test/docker-keycloak/setup-keycloak.js` to reflect the current automated bootstrap flow (no misleading manual secret-copy instruction in the default path).
+- Normalized formatting of `test/config/default.json`.
+
 ## [6.3.2] - 2026-03-18
 
 ### Added

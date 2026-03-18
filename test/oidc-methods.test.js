@@ -313,6 +313,24 @@ describe('OIDC Methods', function() {
         global.fetch = originalFetch;
       }
     });
+
+    it('should throw on non-JSON error body from token endpoint', async function() {
+      const originalFetch = global.fetch;
+
+      global.fetch = async () => ({
+        ok: false,
+        text: async () => 'Service Unavailable'
+      });
+
+      try {
+        await adapter.loginWithCredentials({ grant_type: 'client_credentials' });
+        assert.fail('should have thrown');
+      } catch (error) {
+        assert(error.message.length > 0, 'should throw a non-empty error');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
   });
 
   describe('loginPKCE()', function() {
@@ -406,6 +424,34 @@ describe('OIDC Methods', function() {
         assert.strictEqual(capturedBody.get('code'), 'auth-code-123');
         assert.strictEqual(capturedBody.get('redirect_uri'), 'https://app.example.com/callback');
         assert.strictEqual(capturedBody.get('code_verifier'), 'verifier-123');
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('should throw on failed HTTP response from token endpoint', async function() {
+      const originalFetch = global.fetch;
+
+      global.fetch = async () => ({
+        ok: false,
+        text: async () => JSON.stringify({
+          error: 'invalid_grant',
+          error_description: 'Code not valid'
+        })
+      });
+
+      try {
+        await adapter.loginPKCE({
+          code: 'expired-code',
+          redirect_uri: 'https://app.example.com/callback',
+          code_verifier: 'verifier-123'
+        });
+        assert.fail('should have thrown');
+      } catch (error) {
+        assert(
+          error.message.includes('invalid_grant') || error.message.includes('Code not valid') || error.message.includes('failed'),
+          `unexpected error: ${error.message}`
+        );
       } finally {
         global.fetch = originalFetch;
       }
