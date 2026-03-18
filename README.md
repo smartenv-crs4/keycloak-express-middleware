@@ -43,6 +43,7 @@ It is based on **'keycloak-connect'** and **'express-session'**.
         - [API - hasScopeFromRequest](#api---hasscopefromrequestreq-requiredscope)
         - [API - hasScopesFromRequest](#api---hasscopesfromrequestreq-requiredscopes-mode)
         - [API - requireScopes](#api---requirescopesrequiredscopes-mode)
+- [Recipes and Patterns](docs/recipes.md)
 - [Handling Unauthorized Access (401/403) Gracefully](#handling-unauthorized-access-401403-gracefully)
 - [Testing Documentation](#testing-documentation)
 - [License](#license)
@@ -2278,6 +2279,15 @@ app.get(
     (req, res) => res.send('Premium feature accessed')
 );
 ```
+
+---
+## Recipes and Patterns
+
+For complete end-to-end integration examples showing how multiple APIs work together, see the dedicated guide:
+
+**[Recipes and Patterns &rarr;](docs/recipes.md)**
+
+Covers: PKCE login flow, multi-tenant setup, layered authorization (role + scope + permission), adaptive API responses, service-to-service token flow, login/logout lifecycle, scope-gated REST endpoints, and custom 401/403 UX.
 
 ---
 ## Handling Unauthorized Access (401/403) Gracefully
