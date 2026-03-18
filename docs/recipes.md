@@ -332,6 +332,53 @@ app.get('/internal/me', async (req, res) => {
 
     res.status(upstream.status).json(upstream.data);
 });
+
+// Production-style route with explicit fallback mapping
+app.get('/internal/orders/:id', async (req, res) => {
+    try {
+        const upstream = await keycloakInstance.callProtectedApi({
+            url: `https://orders-api.example.com/orders/${req.params.id}`,
+            method: 'GET',
+            authMode: 'service',
+            serviceTokenOptions: {
+                scope: 'orders.read',
+                cacheKey: 'orders-api/default'
+            },
+            timeoutMs: 5000
+        });
+
+        if (upstream.status === 404) {
+            return res.status(404).json({
+                error: 'Order not found',
+                orderId: req.params.id
+            });
+        }
+
+        if (!upstream.ok) {
+            return res.status(502).json({
+                error: 'Upstream service error',
+                upstreamStatus: upstream.status,
+                upstreamData: upstream.data,
+                auth: upstream.auth
+            });
+        }
+
+        // Optional response envelope from gateway/backend-for-frontend layer
+        return res.json({
+            order: upstream.data,
+            metadata: {
+                upstreamStatus: upstream.status,
+                tokenSource: upstream.auth.tokenSource,
+                retriedWithFreshToken: upstream.auth.retriedWithFreshToken
+            }
+        });
+    } catch (err) {
+        return res.status(503).json({
+            error: 'Service unavailable',
+            details: err.message
+        });
+    }
+});
 ```
 
 ---

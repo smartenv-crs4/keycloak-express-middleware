@@ -2354,6 +2354,10 @@ const tenantToken = await keycloakInstance.getServiceToken({
 });
 ```
 
+For a complete service-to-service flow with fallback handling and response mapping, see:
+
+**[Recipe 5 - Service-to-Service Token Flow with Auto-Refresh](docs/recipes.md#recipe-5---service-to-service-token-flow-with-auto-refresh)**
+
 #### API - callProtectedApi(options)
 
 **Signature**
@@ -2464,6 +2468,10 @@ const passthrough = await keycloakInstance.callProtectedApi({
     json: { event: 'download', itemId: req.params.id }
 });
 ```
+
+For a full production-style route example (including timeout, fallback mapping, and upstream error shaping), see:
+
+**[Recipe 5 - Service-to-Service Token Flow with Auto-Refresh](docs/recipes.md#recipe-5---service-to-service-token-flow-with-auto-refresh)**
 
 ---
 ## Recipes and Patterns
