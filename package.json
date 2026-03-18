@@ -1,6 +1,6 @@
 {
   "name": "keycloak-express-middleware",
-  "version": "6.3.1",
+  "version": "6.3.2",
   "description": "Adapter API to integrate Node.js (Express) applications with Keycloak. Provides middleware for authentication, authorization, token validation, and route protection via OpenID Connect.",
   "main": "index.js",
   "typings": "index.d.ts",
@@ -26,14 +26,20 @@
     "test/*.test.js",
     "test/package.json",
     "test/package-lock.json",
-    "test/config/**",
+    "test/config/default.json",
+    "test/config/secrets.json.example",
     "test/helpers/**",
     "test/support/**",
-    "test/docker-keycloak/**"
+    "test/docker-keycloak/README.md",
+    "test/docker-keycloak/docker-compose.yml",
+    "test/docker-keycloak/docker-compose-https.yml",
+    "test/docker-keycloak/setup-keycloak.js",
+    "test/docker-keycloak/certs/README.md",
+    "test/docker-keycloak/certs/.gitkeep"
   ],
   "scripts": {
-    "test": "npm --prefix test install && npm --prefix test run setup-keycloak && NODE_PATH=./test/node_modules npm --prefix test test",
-    "setup-keycloak": "eval \"$(ssh-agent -s)\" && ssh-add ~/.ssh/id_ed25519 && NODE_ENV=test node test/docker-keycloak/setup-keycloak.js"
+    "test": "node test/helpers/ensure-test-config.js && npm --prefix test install && npm --prefix test run setup-keycloak && NODE_PATH=./test/node_modules npm --prefix test test",
+    "setup-keycloak": "node test/helpers/ensure-test-config.js && eval \"$(ssh-agent -s)\" && ssh-add ~/.ssh/id_ed25519 && NODE_ENV=test node test/docker-keycloak/setup-keycloak.js"
   },
   "dependencies": {
     "express-session": "^1.19.0",

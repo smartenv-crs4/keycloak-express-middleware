@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.3.2] - 2026-03-18
+
+### Added
+- Automatic test config bootstrap via `test/helpers/ensure-test-config.js`.
+- `npm run setup-keycloak` now ensures missing test config files are recreated before interactive setup:
+  - `test/config/secrets.json`
+  - `test/docker-keycloak/.env`
+
+### Changed
+- npm package `files` whitelist keeps `test/` assets available on install while excluding sensitive/generated files (`test/config/secrets.json`, `test/docker-keycloak/.env`, local cert files).
+
 ## [6.3.1] - 2026-03-18
 
 ### Changed
