@@ -1,11 +1,30 @@
 .git/
+.github/
 .idea/
 .vscode/
 node_modules/
 **/node_modules/
+.env
+.env.*
 
 # Local logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Local development artifacts
+.DS_Store
+*.swp
+*.swo
+*~
+.editorconfig
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Linters/formatters
+.eslintrc*
+.prettierrc*
+.prettierignore
