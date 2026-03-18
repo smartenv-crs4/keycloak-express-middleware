@@ -512,7 +512,7 @@ Creates one isolated adapter instance bound to one Keycloak client.
 
 - Configured middleware instance.
 
-**Practical example**
+**Practical example - Basic configuration**
 
 ```js
 const keycloakInstance = new keycloakAdapter(app, keycloakConfig, {
@@ -521,6 +521,36 @@ const keycloakInstance = new keycloakAdapter(app, keycloakConfig, {
         resave: false,
         saveUninitialized: false
     }
+});
+```
+
+**Example - Multi-tenant setup (multiple Keycloak clients)**
+
+```js
+// Tenant A: separate Keycloak client
+const keycloakTenantA = new keycloakAdapter(app, {
+    realm: 'tenant-a',
+    resource: 'tenant-a-client',
+    'auth-server-url': 'https://keycloak.example.com/',
+    credentials: { secret: process.env.TENANT_A_SECRET }
+}, { session: { secret: process.env.SESSION_SECRET } });
+
+// Tenant B: separate Keycloak client
+const keycloakTenantB = new keycloakAdapter(app, {
+    realm: 'tenant-b',
+    resource: 'tenant-b-client',
+    'auth-server-url': 'https://keycloak.example.com/',
+    credentials: { secret: process.env.TENANT_B_SECRET }
+}, { session: { secret: process.env.SESSION_SECRET } });
+
+// Route for Tenant A
+app.get('/a/profile', keycloakTenantA.protectMiddleware(), (req, res) => {
+    res.json({ tenant: 'A', user: req.kauth.grant.access_token.content.preferred_username });
+});
+
+// Route for Tenant B
+app.get('/b/profile', keycloakTenantB.protectMiddleware(), (req, res) => {
+    res.json({ tenant: 'B', user: req.kauth.grant.access_token.content.preferred_username });
 });
 ```
 
@@ -642,6 +672,40 @@ app.get('/editor-area', keycloakInstance.protectMiddleware((token, req) => {
 });
 ```
 
+**Example - Role array (any role matches)**
+
+```js
+// Access granted if user has ANY of these roles
+app.get('/dashboard', keycloakInstance.protectMiddleware(['admin', 'manager', 'supervisor']), (req, res) => {
+    const token = req.kauth.grant.access_token.content;
+    res.json({ role: token.resource_access[keycloakConfig.resource]?.roles[0] });
+});
+```
+
+**Example - Realm role**
+
+```js
+// Access granted only to realm admins (global role, not client-specific)
+app.get('/realm-admin-only', keycloakInstance.protectMiddleware('realm:admin'), (req, res) => {
+    res.send('You have realm administration privileges');
+});
+```
+
+**Example - Time-based conditional access**
+
+```js
+// Route accessible only during business hours for non-admin users
+app.get('/restricted-time-area', keycloakInstance.protectMiddleware((token, req) => {
+    const isAdmin = token.hasRealmRole('admin');
+    if (isAdmin) return true; // Admins always allowed
+    
+    const hour = new Date().getHours();
+    return hour >= 9 && hour < 17; // Business hours only
+}), (req, res) => {
+    res.send('Access granted during business hours');
+});
+```
+
 #### API - customProtectMiddleware(customFunction)
 
 **Signature**
@@ -672,12 +736,38 @@ Builds role expressions dynamically from request context.
 
 - Middleware return.
 
-**Example**
+**Example - URL parameter based role**
 
 ```js
 app.get('/tenant/:role', keycloakInstance.customProtectMiddleware((req) => {
     return req.params.role;
-}), handler);
+}), (req, res) => {
+    res.send(`Accessing tenant with role: ${req.params.role}`);
+});
+```
+
+**Example - Query parameter based role**
+
+```js
+app.get('/resource-access', keycloakInstance.customProtectMiddleware((req) => {
+    // Extract role from query: /resource-access?requiredRole=viewer
+    const role = req.query.requiredRole || 'user';
+    return role;
+}), (req, res) => {
+    res.json({ message: `Accessed with role requirement: ${req.query.requiredRole}` });
+});
+```
+
+**Example - Header-based role routing**
+
+```js
+app.get('/api/data', keycloakInstance.customProtectMiddleware((req) => {
+    // Role determined by custom header (useful for microservices)
+    const roleFromService = req.headers['x-required-role'] || 'user';
+    return roleFromService;
+}), (req, res) => {
+    res.json({ data: 'sensitive data' });
+});
 ```
 
 #### API - enforcerMiddleware(conditions, options)
@@ -750,13 +840,26 @@ Unlike `protectMiddleware` function mode, this flow is asynchronous and callback
 - Policy Enforcement Mode must be configured.
 - Resources, policies, and permissions must be defined in Keycloak.
 
-**Example**
+**Example - Simple resource permission**
 
 ```js
-app.get('/report', keycloakInstance.enforcerMiddleware('report-resource:view'), handler);
+app.get('/report', keycloakInstance.enforcerMiddleware('report-resource:view'), (req, res) => {
+    res.render('report', { data: getReportData() });
+});
 ```
 
-**Example with `conditions` as function**
+**Example - Multiple resource permissions (any)**
+
+```js
+// User needs at least ONE of these permissions
+app.get('/documents', keycloakInstance.enforcerMiddleware(
+    ['document:read', 'document:admin']
+), (req, res) => {
+    res.json({ documents: getDocuments() });
+});
+```
+
+**Example with `conditions` as function - resource-specific permission**
 
 ```js
 app.get('/reports/:id', keycloakInstance.enforcerMiddleware((token, req, callback) => {
@@ -769,7 +872,26 @@ app.get('/reports/:id', keycloakInstance.enforcerMiddleware((token, req, callbac
         });
     });
 }), (req, res) => {
-    res.send('Access granted by custom enforcer function');
+    res.send('Access granted to report');
+});
+```
+
+**Example - Ownership-based permission check**
+
+```js
+// User can only edit document they own
+app.put('/document/:docId', keycloakInstance.enforcerMiddleware((token, req, callback) => {
+    const docId = req.params.docId;
+    const userId = token.sub; // Subject claim from token
+    
+    // Check if user owns this document (could also call database)
+    token.hasPermission(`document:${docId}:edit`, (hasPermission) => {
+        // Additional ownership check from token claims if available
+        const isOwner = token.doc_owner_ids?.includes(docId);
+        callback(hasPermission && isOwner);
+    });
+}), (req, res) => {
+    res.json({ message: 'Document updated' });
 });
 ```
 
@@ -849,6 +971,41 @@ app.get('/profile', keycloakInstance.encodeTokenRole(), (req, res) => {
 });
 ```
 
+**Example - Conditional response enrichment**
+
+```js
+// Respond differently for admins vs regular users
+app.get('/user-data', keycloakInstance.encodeTokenRole(), (req, res) => {
+    const userData = { name: 'John', email: 'john@example.com' };
+    
+    if (req.encodedTokenRole.hasRole('admin')) {
+        userData.adminNotes = 'User account created 2024-01-15';
+        userData.accessLevel = 'full';
+    } else if (req.encodedTokenRole.hasRole('viewer')) {
+        userData.accessLevel = 'read-only';
+    } else {
+        // Remove sensitive fields for standard users
+        delete userData.email;
+    }
+    
+    res.json(userData);
+});
+```
+
+**Example - Role-based feature flags**
+
+```js
+app.get('/features', keycloakInstance.encodeTokenRole(), (req, res) => {
+    const features = {
+        basicSearch: true,
+        advancedAnalytics: req.encodedTokenRole.hasRole('premium'),
+        apiAccess: req.encodedTokenRole.hasRole('developer'),
+        adminPanel: req.encodedTokenRole.hasRole('realm:admin')
+    };
+    res.json(features);
+});
+```
+
 #### API - encodeTokenPermission
 
 **Signature**
@@ -890,6 +1047,49 @@ app.get('/can-read', keycloakInstance.encodeTokenPermission(), (req, res) => {
 });
 ```
 
+**Example - Multi-step permission checks**
+
+```js
+app.get('/document/:docId', keycloakInstance.encodeTokenPermission(), (req, res) => {
+    const docId = req.params.docId;
+    
+    req.encodedTokenPermission.hasPermission(`doc:${docId}:read`, (canRead) => {
+        if (!canRead) return res.status(403).json({ error: 'Cannot read document' });
+        
+        // User can read, check if they can edit
+        req.encodedTokenPermission.hasPermission(`doc:${docId}:edit`, (canEdit) => {
+            res.json({
+                document: getDocument(docId),
+                canEdit: canEdit,
+                canDelete: false // May check another permission
+            });
+        });
+    });
+});
+```
+
+**Example - Permission-based UI customization**
+
+```js
+app.get('/dashboard', keycloakInstance.encodeTokenPermission(), (req, res) => {
+    const permissions = { canCreate: false, canExport: false, canShare: false };
+    
+    // Cascade permission checks
+    req.encodedTokenPermission.hasPermission('resource:create', (can) => {
+        permissions.canCreate = !!can;
+    });
+    
+    req.encodedTokenPermission.hasPermission('resource:export', (can) => {
+        permissions.canExport = !!can;
+    });
+    
+    req.encodedTokenPermission.hasPermission('resource:share', (can) => {
+        permissions.canShare = !!can;
+        res.render('dashboard', permissions);
+    });
+});
+```
+
 #### API - loginMiddleware(redirectTo)
 
 **Signature**
@@ -923,6 +1123,23 @@ Forces authentication and redirects authenticated users to destination.
 
 ```js
 app.get('/signIn', keycloakInstance.loginMiddleware('/home'));
+```
+
+**Example - Login with post-login redirect to dashboard**
+
+```js
+app.get('/login', keycloakInstance.loginMiddleware('/dashboard'));
+app.get('/signin', keycloakInstance.loginMiddleware('/dashboard')); // Alternative URL
+```
+
+**Example - Login with locale parameter**
+
+```js
+app.get('/login/:lang', keycloakInstance.loginMiddleware((req) => {
+    // Redirect to different pages based on language preference
+    const locale = req.params.lang;
+    return `/${locale}/home`;
+}));
 ```
 
 #### API - logoutMiddleware(redirectTo)
@@ -959,6 +1176,23 @@ Destroys local session and redirects through Keycloak logout endpoint when token
 
 ```js
 app.get('/signOut', keycloakInstance.logoutMiddleware('http://localhost:3000/'));
+```
+
+**Example - Logout with landing page**
+
+```js
+// Logout and redirect to goodbye page
+app.get('/logout', keycloakInstance.logoutMiddleware('/goodbye'));
+app.get('/goodbye', (req, res) => {
+    res.render('goodbye', { message: 'You have been logged out successfully' });
+});
+```
+
+**Example - Logout with external URL**
+
+```js
+// Logout and redirect to external domain
+app.get('/logout-and-redirect', keycloakInstance.logoutMiddleware('https://www.example.com'));
 ```
 
 ### Imperative and OIDC Functions
@@ -1120,6 +1354,29 @@ app.get('/login-if-needed', (req, res) => {
 });
 ```
 
+**Example - Login with audit logging**
+
+```js
+app.get('/signin', (req, res) => {
+    console.log(`Login attempt from IP: ${req.ip}`);
+    req.session.loginAttemptTime = new Date();
+    keycloakInstance.login(req, res, '/dashboard');
+});
+```
+
+**Example - Conditional login based on session state**
+
+```js
+app.get('/secure-area', (req, res) => {
+    if (req.session?.user) {
+        // Already logged in, show content
+        return res.render('secure-area');
+    }
+    // Not logged in, trigger authentication
+    keycloakInstance.login(req, res, '/secure-area');
+});
+```
+
 #### API - logout(req, res, redirectTo)
 
 **Signature**
@@ -1151,6 +1408,32 @@ Imperative logout helper intended for use inside route handlers.
 ```js
 app.get('/logout-now', (req, res) => {
     keycloakInstance.logout(req, res, 'http://localhost:3000/');
+});
+```
+
+**Example - Logout with user feedback**
+
+```js
+app.get('/logout', (req, res) => {
+    const username = req.kauth?.grant?.access_token?.content?.preferred_username || 'User';
+    console.log(`${username} logged out at ${new Date().toISOString()}`);
+    
+    // Audit log could go here
+    req.session.logoutTime = new Date();
+    
+    keycloakInstance.logout(req, res, 'http://localhost:3000/logged-out');
+});
+```
+
+**Example - Conditional logout with cleanup**
+
+```js
+app.get('/exit', async (req, res) => {
+    // Perform cleanup before logout
+    if (req.session?.userId) {
+        await cleanupUserResources(req.session.userId);
+    }
+    keycloakInstance.logout(req, res, '/goodbye');
 });
 ```
 
@@ -1196,7 +1479,7 @@ Builds PKCE initialization values and authorization URL.
 - Throws `Error` when middleware initialization data is missing.
 - Throws `Error` when `redirect_uri`/`redirectUri` is missing.
 
-**Example**
+**Example - Basic PKCE initialization**
 
 ```js
 const pkce = keycloakInstance.generateAuthorizationUrl({
@@ -1204,6 +1487,40 @@ const pkce = keycloakInstance.generateAuthorizationUrl({
 });
 req.session.pkce_state = pkce.state;
 req.session.pkce_verifier = pkce.codeVerifier;
+res.redirect(pkce.authUrl);
+```
+
+**Example - PKCE with custom scope**
+
+```js
+const pkce = keycloakInstance.generateAuthorizationUrl({
+    redirect_uri: 'https://app.example.com/callback',
+    scope: 'openid profile email offline_access'
+});
+
+// Store in session or state management
+req.session.pkce_state = pkce.state;
+req.session.pkce_verifier = pkce.codeVerifier;
+req.session.auth_initiated_at = Date.now();
+
+res.json({
+    authorization_url: pkce.authUrl,
+    // Frontend should store state/verifier safely
+});
+```
+
+**Example - PKCE with custom state**
+
+```js
+const customState = `state_${Date.now()}_${Math.random()}`;
+const pkce = keycloakInstance.generateAuthorizationUrl({
+    redirect_uri: 'https://api.example.com/oauth/callback',
+    scope: 'openid profile',
+    state: customState
+});
+
+// Verify state in callback to prevent CSRF attacks
+req.session.oauth_state = customState;
 res.redirect(pkce.authUrl);
 ```
 
@@ -1258,12 +1575,44 @@ Generic OAuth2 token endpoint helper supporting multiple grant types.
 - Throws `Error` when middleware initialization data is missing.
 - Throws `Error` when token endpoint responds with non-success status.
 
-**Example (refresh token grant)**
+**Example - Refresh token grant**
 
 ```js
 const refreshed = await keycloakInstance.loginWithCredentials({
     grant_type: 'refresh_token',
     refresh_token: storedRefreshToken
+});
+```
+
+**Example - Password grant (Direct Access Grants required)**
+
+```js
+// Requires "Direct Access Grants" enabled on Keycloak client
+const tokens = await keycloakInstance.loginWithCredentials({
+    grant_type: 'password',
+    username: 'user@example.com',
+    password: 'userPassword123',
+    scope: 'openid profile email'
+});
+
+req.session.access_token = tokens.access_token;
+res.json({ success: true, token_type: tokens.token_type });
+```
+
+**Example - Client credentials grant (service-to-service)**
+
+```js
+// Get token as a service/application (not user-specific)
+const serviceToken = await keycloakInstance.loginWithCredentials({
+    grant_type: 'client_credentials',
+    client_id: process.env.KEYCLOAK_CLIENT_ID,
+    client_secret: process.env.KEYCLOAK_CLIENT_SECRET,
+    scope: 'openid'
+});
+
+// Use token to call protected APIs
+const apiResponse = await fetch('https://api.example.com/data', {
+    headers: { 'Authorization': `Bearer ${serviceToken.access_token}` }
 });
 ```
 
@@ -1320,6 +1669,62 @@ const tokens = await keycloakInstance.loginPKCE({
 });
 ```
 
+**Example - Full PKCE callback flow**
+
+```js
+app.get('/auth/callback', async (req, res) => {
+    try {
+        // Verify state to prevent CSRF
+        if (req.query.state !== req.session.pkce_state) {
+            throw new Error('State mismatch - possible CSRF attack');
+        }
+
+        // Exchange code and verifier for tokens
+        const tokens = await keycloakInstance.loginPKCE({
+            code: req.query.code,
+            redirect_uri: process.env.OAUTH_CALLBACK_URL,
+            code_verifier: req.session.pkce_verifier
+        });
+
+        // Store tokens securely
+        req.session.access_token = tokens.access_token;
+        req.session.refresh_token = tokens.refresh_token;
+        req.session.user_authenticated = true;
+
+        res.redirect('/dashboard');
+    } catch (err) {
+        console.error('PKCE exchange failed:', err);
+        res.status(401).json({ error: 'Authentication failed' });
+    }
+});
+```
+
+**Example - PKCE with automatic token refresh**
+
+```js
+app.get('/auth/callback', async (req, res) => {
+    try {
+        const tokens = await keycloakInstance.loginPKCE({
+            code: req.query.code,
+            redirect_uri: 'https://app.example.com/callback',
+            code_verifier: req.session.pkce_verifier
+        });
+
+        // Store tokens and setup auto-refresh
+        req.session.access_token = tokens.access_token;
+        req.session.refresh_token = tokens.refresh_token;
+        req.session.token_expires_at = Date.now() + (tokens.expires_in * 1000);
+
+        // Schedule token refresh
+        setTimeout(() => refreshAccessToken(req), (tokens.expires_in - 30) * 1000);
+
+        res.redirect('/home');
+    } catch (err) {
+        res.status(401).send('Authentication failed');
+    }
+});
+```
+
 #### API - redirectToUserAccountConsole(res)
 
 **Signature**
@@ -1353,6 +1758,31 @@ app.get('/my-account', (req, res) => {
 });
 ```
 
+**Example - Account management link in profile page**
+
+```js
+app.get('/profile', keycloakInstance.protectMiddleware(), (req, res) => {
+    const user = req.kauth.grant.access_token.content;
+    res.render('profile', {
+        user: user.preferred_username,
+        manageAccountUrl: '/manage-account' // This endpoint redirects via redirectToUserAccountConsole
+    });
+});
+
+app.get('/manage-account', keycloakInstance.protectMiddleware(), (req, res) => {
+    keycloakInstance.redirectToUserAccountConsole(res);
+});
+```
+
+**Example - Security settings redirect**
+
+```js
+// Direct users to change password, 2FA settings, etc.
+app.get('/security-settings', keycloakInstance.protectMiddleware(), (req, res) => {
+    keycloakInstance.redirectToUserAccountConsole(res);
+});
+```
+
 #### API - hasScope(scopeInput, requiredScope)
 
 **Signature**
@@ -1379,11 +1809,38 @@ Checks whether one scope is present in a scope string or array.
 
 - `boolean`: `true` if scope exists, otherwise `false`.
 
-**Example**
+**Example - Email scope check**
 
 ```js
 const tokenScope = req?.kauth?.grant?.access_token?.content?.scope;
 const canReadEmail = keycloakInstance.hasScope(tokenScope, 'email');
+```
+
+**Example - Checking multiple scopes one by one**
+
+```js
+const scope = 'openid profile email'; // From token
+
+const hasOpenId = keycloakInstance.hasScope(scope, 'openid'); // true
+const hasOfflineAccess = keycloakInstance.hasScope(scope, 'offline_access'); // false
+const hasEmail = keycloakInstance.hasScope(scope, 'email'); // true
+
+res.json({ hasOpenId, hasOfflineAccess, hasEmail });
+```
+
+**Example - Response based on scope availability**
+
+```js
+const scope = req?.kauth?.grant?.access_token?.content?.scope || '';
+
+const response = {
+    profile: true,
+    email: keycloakInstance.hasScope(scope, 'email'),
+    phone: keycloakInstance.hasScope(scope, 'phone'),
+    address: keycloakInstance.hasScope(scope, 'address')
+};
+
+res.json(response);
 ```
 
 #### API - hasScopes(scopeInput, requiredScopes, mode)
@@ -1408,7 +1865,7 @@ Checks multiple scopes with `all` (default) or `any` matching mode.
 
 - `boolean`: scope validation result.
 
-**Example**
+**Example - Check all required scopes**
 
 ```js
 const scopeString = tokenResponse.scope;
@@ -1424,6 +1881,50 @@ const hasAny = keycloakInstance.hasScopes(
     ['email', 'offline_access'],
     'any'
 );
+```
+
+**Example - Scope validation before API call**
+
+```js
+app.get('/user-data', keycloakInstance.protectMiddleware(), (req, res) => {
+    const scope = req?.kauth?.grant?.access_token?.content?.scope || '';
+    
+    // Check required scopes
+    const canAccessProfile = keycloakInstance.hasScope(scope, 'profile');
+    const canAccessEmail = keycloakInstance.hasScope(scope, 'email');
+    
+    if (!canAccessProfile) {
+        return res.status(403).json({ error: 'Missing profile scope' });
+    }
+    
+    const userData = {
+        profile: getUserProfile(req),
+        email: canAccessEmail ? getUserEmail(req) : null
+    };
+    
+    res.json(userData);
+});
+```
+
+**Example - Delegated vs direct access scopes**
+
+```js
+const scope = tokenResponse.scope;
+
+// check for offline access (allows refresh tokens)
+const canRefresh = keycloakInstance.hasScope(scope, 'offline_access');
+
+// Check for direct API access vs SSO-only
+const canUseDirectAPI = keycloakInstance.hasScopes(
+    scope,
+    ['api-access', 'direct-auth'],
+    'any'
+);
+
+res.json({
+    sessionRefresh: canRefresh,
+    apiAccess: canUseDirectAPI
+});
 ```
 
 #### API - getTokenClaims(req)
@@ -1447,6 +1948,41 @@ const claims = keycloakInstance.getTokenClaims(req);
 const username = claims.preferred_username;
 ```
 
+**Example - Extract multiple claims**
+
+```js
+app.get('/token-info', keycloakInstance.protectMiddleware(), (req, res) => {
+    const claims = keycloakInstance.getTokenClaims(req);
+    
+    res.json({
+        username: claims.preferred_username,
+        email: claims.email,
+        givenName: claims.given_name,
+        familyName: claims.family_name,
+        expiresAt: new Date(claims.exp * 1000).toISOString()
+    });
+});
+```
+
+**Example - Token inspection/debugging**
+
+```js
+app.get('/debug/token', keycloakInstance.protectMiddleware(), (req, res) => {
+    const claims = keycloakInstance.getTokenClaims(req);
+    
+    if (process.env.NODE_ENV === 'development') {
+        res.json({
+            allClaims: claims,
+            tokenValid: claims.exp > Date.now() / 1000,
+            issuedAt: new Date(claims.iat * 1000),
+            expiresAt: new Date(claims.exp * 1000)
+        });
+    } else {
+        res.status(403).send('Not available in production');
+    }
+});
+```
+
 #### API - isAuthenticated(req)
 
 **Signature**
@@ -1467,6 +2003,34 @@ Checks whether request contains a Keycloak access token.
 if (!keycloakInstance.isAuthenticated(req)) {
     return res.status(401).send('Not authenticated');
 }
+```
+
+**Example - Conditional rendering**
+
+```js
+app.get('/content', (req, res) => {
+    if (!keycloakInstance.isAuthenticated(req)) {
+        return res.render('login-prompt');
+    }
+    res.render('protected-content');
+});
+```
+
+**Example - Middleware-less authentication check**
+
+```js
+app.get('/optional-features', (req, res) => {
+    const isAuth = keycloakInstance.isAuthenticated(req);
+    
+    const features = {
+        basicRead: true,
+        advancedSearch: isAuth,
+        exportData: isAuth,
+        collaboration: isAuth && req.kauth?.grant?.access_token?.content?.realm_access?.roles?.includes('premium')
+    };
+    
+    res.json(features);
+});
 ```
 
 #### API - getScopes(scopeInputOrReq)
@@ -1494,6 +2058,45 @@ const scopes = keycloakInstance.getScopes(req);
 // ['openid', 'profile', 'email']
 ```
 
+**Example - Normalizing different input types**
+
+```js
+app.get('/scope-test', keycloakInstance.protectMiddleware(), (req, res) => {
+    // All these return the same format: string[]
+    const fromRequest = keycloakInstance.getScopes(req);
+    const fromString = keycloakInstance.getScopes('openid profile email');
+    const fromArray = keycloakInstance.getScopes(['openid', 'profile', 'email']);
+    
+    res.json({
+        fromRequest,
+        fromString,
+        fromArray,
+        allEqual: JSON.stringify(fromRequest) === JSON.stringify(fromString)
+    });
+});
+```
+
+**Example - Scope availability dashboard**
+
+```js
+app.get('/scopes', keycloakInstance.protectMiddleware(), (req, res) => {
+    const scopes = keycloakInstance.getScopes(req);
+    
+    const scopeInfo = {
+        total: scopes.length,
+        list: scopes,
+        capabilities: {
+            userInfo: scopes.includes('profile'),
+            emailAccess: scopes.includes('email'),
+            offlineAccess: scopes.includes('offline_access'),
+            mobileAccess: scopes.includes('mobile')
+        }
+    };
+    
+    res.json(scopeInfo);
+});
+```
+
 #### API - hasScopeFromRequest(req, requiredScope)
 
 **Signature**
@@ -1512,6 +2115,28 @@ Convenience wrapper around `hasScope(...)` using request token claims.
 
 ```js
 const canReadEmail = keycloakInstance.hasScopeFromRequest(req, 'email');
+```
+
+**Example - Scope-based response customization**
+
+```js
+app.get('/user-profile', keycloakInstance.protectMiddleware(), (req, res) => {
+    const profile = {
+        username: keycloakInstance.getTokenClaims(req).preferred_username
+    };
+    
+    // Include email only if user granted email scope
+    if (keycloakInstance.hasScopeFromRequest(req, 'email')) {
+        profile.email = keycloakInstance.getTokenClaims(req).email;
+    }
+    
+    // Include phone only if both phone and profile scopes
+    if (keycloakInstance.hasScopeFromRequest(req, 'phone')) {
+        profile.phone = keycloakInstance.getTokenClaims(req).phone_number;
+    }
+    
+    res.json(profile);
+});
 ```
 
 #### API - hasScopesFromRequest(req, requiredScopes, mode)
@@ -1538,6 +2163,44 @@ const allowed = keycloakInstance.hasScopesFromRequest(
 );
 ```
 
+**Example - Multi-scope requirement check**
+
+```js
+app.get('/sensitive-data', keycloakInstance.protectMiddleware(), (req, res) => {
+    // Require both openid AND profile scopes
+    const hasRequired = keycloakInstance.hasScopesFromRequest(
+        req,
+        ['openid', 'profile'],
+        'all'
+    );
+    
+    if (!hasRequired) {
+        return res.status(403).json({ error: 'Insufficient scopes. Required: openid, profile' });
+    }
+    
+    res.json({ data: 'sensitive information' });
+});
+```
+
+**Example - Flexible requirements with 'any' mode**
+
+```js
+app.get('/export-data', keycloakInstance.protectMiddleware(), (req, res) => {
+    // User needs at least ONE of these scopes to export
+    const canExport = keycloakInstance.hasScopesFromRequest(
+        req,
+        ['export-csv', 'export-excel', 'export-pdf'],
+        'any'
+    );
+    
+    if (!canExport) {
+        return res.status(403).json({ error: 'Export permission required' });
+    }
+    
+    res.attachment('data.csv').send(exportData());
+});
+```
+
 #### API - requireScopes(requiredScopes, mode)
 
 **Signature**
@@ -1560,6 +2223,59 @@ app.get(
     keycloakInstance.protectMiddleware(),
     keycloakInstance.requireScopes(['email'], 'all'),
     (req, res) => res.send('Scope check passed')
+);
+```
+
+**Example - Multiple scope checks in chain**
+
+```js
+app.post(
+    '/api/send-notification',
+    keycloakInstance.protectMiddleware(),
+    keycloakInstance.requireScopes(['email', 'notifications'], 'all'), // All required
+    async (req, res) => {
+        const email = keycloakInstance.getTokenClaims(req).email;
+        await sendNotification(email, req.body);
+        res.json({ sent: true });
+    }
+);
+```
+
+**Example - Endpoint with flexible scope requirements**
+
+```js
+app.get(
+    '/data-export',
+    keycloakInstance.protectMiddleware(),
+    keycloakInstance.requireScopes(['export-csv', 'export-json', 'export-excel'], 'any'), // At least one
+    (req, res) => {
+        const format = req.query.format || 'csv';
+        res.json({ exported: true, format });
+    }
+);
+```
+
+**Example - Scope enforcement with custom error responses**
+
+```js
+// Custom middleware that wraps requireScopes with better error handling
+const requireScopesWithLogging = (requiredScopes, mode = 'all') => {
+    return (req, res, next) => {
+        const middleware = keycloakInstance.requireScopes(requiredScopes, mode);
+        
+        // Log scope checks
+        console.log(`Scope check [${mode}]: ${requiredScopes.join(', ')} on ${req.path}`);
+        
+        // Call the middleware
+        middleware(req, res, next);
+    };
+};
+
+app.get(
+    '/premium-feature',
+    keycloakInstance.protectMiddleware(),
+    requireScopesWithLogging(['premium'], 'all'),
+    (req, res) => res.send('Premium feature accessed')
 );
 ```
 
