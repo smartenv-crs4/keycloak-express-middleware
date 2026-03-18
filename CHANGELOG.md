@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.3.4] - 2026-03-18
+
+### Changed
+- Updated project license copyright line to:
+  - `Copyright (c) 2025 CRS4, aromanino, gporruvecchio`
+- Aligned test workspace lockfile metadata with current package version.
+
 ## [6.3.3] - 2026-03-18
 
 ### Added
