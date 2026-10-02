@@ -1,8 +1,10 @@
 # Ignore local secrets and sensitive config
 
 test/config/secrets.json
+test/config/secrets.json *.json
+test/config/secrets.old.json
 
-test/node_modules/
+test/node_modules*/
 test/.env
 test/.cache/
 test/.coverage/
